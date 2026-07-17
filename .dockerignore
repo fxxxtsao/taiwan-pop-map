@@ -1,0 +1,4 @@
+# 只有 web/ 和 docker/ 會進 image，其餘全部排除
+*
+!web
+!docker

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台灣人口年齡地圖｜鄉鎮市區分布</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+
+  <header class="card" id="titlebar">
+    <h1>台灣人口年齡地圖</h1>
+    <p>全台 368 鄉鎮市區・依年齡層人口熱力圖<span id="period"></span></p>
+  </header>
+
+  <aside class="card" id="controls">
+    <section>
+      <h2>資料主題</h2>
+      <div class="chips" id="theme">
+        <button data-t="pop" class="active">人口年齡</button>
+        <button data-t="income">綜稅所得</button>
+      </div>
+    </section>
+    <section id="ageSection">
+      <h2>年齡層</h2>
+      <div id="bands" class="chips"></div>
+      <div class="range-row">
+        <label>自訂</label>
+        <input type="number" id="ageMin" min="0" max="100" value="0">
+        <span>—</span>
+        <input type="number" id="ageMax" min="0" max="100" value="100">
+        <span class="hint">歲</span>
+      </div>
+    </section>
+    <section>
+      <h2>呈現方式</h2>
+      <div class="chips" id="metric">
+        <button data-m="count" class="active">人口數</button>
+        <button data-m="share">占總人口比例</button>
+      </div>
+      <div class="chips" id="metricIncome" hidden>
+        <button data-m="med" class="active">中位數</button>
+        <button data-m="avg">平均數</button>
+      </div>
+    </section>
+    <section>
+      <h2>學校圖層</h2>
+      <label class="toggle"><input type="checkbox" id="layerElem" checked>
+        <span class="dot elem"></span>國小 <span class="cnt" id="cntElem"></span></label>
+      <label class="toggle"><input type="checkbox" id="layerKinder" checked>
+        <span class="dot kinder"></span>幼兒園 <span class="cnt" id="cntKinder"></span></label>
+      <p class="hint" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span class="dot both"></span>大頭針：國小＋附設幼兒園（同址）</p>
+      <p class="hint" id="zoomHint">放大地圖（或點選鄉鎮）即顯示學校位置</p>
+    </section>
+    <section>
+      <h2>底圖與界線</h2>
+      <label class="toggle"><input type="checkbox" id="layerRoad" checked>道路底圖（國土測繪中心）</label>
+      <label class="toggle"><input type="checkbox" id="layerVill" checked>放大時切換村里界</label>
+      <p class="hint" id="villLoading" hidden>村里資料載入中…</p>
+    </section>
+    <section>
+      <div class="row">
+        <select id="countySel"><option value="">全台灣</option></select>
+        <button id="resetBtn" title="回到全圖">↺ 重設</button>
+      </div>
+    </section>
+  </aside>
+
+  <aside class="card" id="detail" hidden>
+    <h2 id="dName"></h2>
+    <div class="stats">
+      <div><span class="num" id="dTotal"></span><span class="lab" id="dTotalLab">總人口</span></div>
+      <div><span class="num" id="dBand"></span><span class="lab" id="dBandLab">選取年齡層</span></div>
+      <div><span class="num" id="dShare"></span><span class="lab" id="dShareLab">占比</span></div>
+    </div>
+    <svg id="hist" width="280" height="90"></svg>
+    <p class="hint">年齡 0 — 100+ 歲人口分布</p>
+    <div class="stats schools-row">
+      <div><span class="num" id="dElem"></span><span class="lab">國小</span></div>
+      <div><span class="num" id="dKinder"></span><span class="lab">幼兒園</span></div>
+    </div>
+  </aside>
+
+  <div class="card" id="legend">
+    <canvas id="legendBar" width="180" height="10"></canvas>
+    <div class="legend-labels"><span id="legMin"></span><span id="legLab"></span><span id="legMax"></span></div>
+  </div>
+
+  <footer class="card" id="sources">
+    資料來源：<a href="https://www.ris.gov.tw/rs-opendata/api/Main/docs/v1" target="_blank">內政部戶政司（村里單齡人口）</a>・
+    <a href="https://depart.moe.edu.tw/ed4500/" target="_blank">教育部統計處（國小／幼兒園名錄）</a>・
+    <a href="https://www.fia.gov.tw/" target="_blank">財政部財政資訊中心（綜稅所得，111 年度）</a>・
+    <a href="https://github.com/dkaoster/taiwan-atlas" target="_blank">taiwan-atlas</a>・
+    底圖：<a href="https://maps.nlsc.gov.tw/" target="_blank">內政部國土測繪中心</a>・
+    座標輔助：© OpenStreetMap
+  </footer>
+
+  <div id="tooltip" hidden></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="app.js?v=4"></script>
+</body>
+</html>

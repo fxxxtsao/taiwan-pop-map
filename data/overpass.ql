@@ -1,0 +1,1 @@
+[out:json][timeout:300];area["ISO3166-1"="TW"][admin_level=2]->.tw;(nwr["amenity"="school"](area.tw);nwr["amenity"="kindergarten"](area.tw);nwr["amenity"="preschool"](area.tw););out tags center;

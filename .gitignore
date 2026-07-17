@@ -1,0 +1,17 @@
+node_modules/
+
+# 可重新下載的大型原始資料（來源見 規格書.md §3）
+data/catalog.csv
+data/catalog_new.csv
+data/p1.json
+data/p2.json
+data/p3.json
+data/p4.json
+
+# 開發過程的除錯截圖與暫存
+data/*.png
+data/ece.html
+data/api_test.json
+data/search1.json
+data/s2.json
+data/ds17964.json
