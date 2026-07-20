@@ -1,13 +1,14 @@
 /* 台灣人口年齡地圖 — MapLibre GL 版（WebGL 渲染）
    D3 僅保留：分位數計算、圖例漸層、詳細面板直方圖 */
 (async function () {
-  const [townsTopo, countiesTopo, pop, schools, income, incomeV] = await Promise.all([
+  const [townsTopo, countiesTopo, pop, schools, income, incomeV, cram] = await Promise.all([
     fetch('towns-10t.json').then(r => r.json()),
     fetch('counties-10t.json').then(r => r.json()),
     fetch('population.json').then(r => r.json()),
     fetch('schools.json').then(r => r.json()),
     fetch('income.json').then(r => r.json()),
     fetch('income_villages.json').then(r => r.json()),
+    fetch('cram.json').then(r => r.ok ? r.json() : null).catch(() => null), // 補習班（可能尚未產出）
   ]);
 
   const townsGeo = topojson.feature(townsTopo, townsTopo.objects.towns);
@@ -159,6 +160,20 @@
   document.getElementById('cntElem').textContent = `${schools.elem.length} 所`;
   document.getElementById('cntKinder').textContent = `${schools.kinder.length} 所`;
 
+  // 補習班（測試中：資料可能只涵蓋部分縣市）
+  const cramGeo = cram ? {
+    type: 'FeatureCollection',
+    features: cram.rows.map(r => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [r[2], r[1]] },
+      properties: { n: r[0], cat: r[3], c: r[4], t: r[5] },
+    })),
+  } : null;
+  if (cram) {
+    document.getElementById('cramRow').hidden = false;
+    document.getElementById('cntCram').textContent = `${cram.rows.length} 家`;
+  }
+
   // ---- 圖層 ----
   // 不等 'load' 也不等 isStyleLoaded()——兩者都會等底圖圖磚，NLSC 慢或失敗時永不就緒。
   // 掛在 styledata（style 解析完就觸發，不等圖磚）；加圖層冪等化，重試不會撞 already exists。
@@ -202,6 +217,22 @@
           'circle-stroke-color': '#fff', 'circle-stroke-width': 0.5,
         },
       });
+    }
+
+    if (cramGeo) {
+      addSrc('cram', { type: 'geojson', data: cramGeo });
+      addLyr({
+        id: 'cram-dots', type: 'circle', source: 'cram', minzoom: SCHOOL_MINZOOM,
+        layout: { visibility: document.getElementById('layerCram').checked ? 'visible' : 'none' },
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3, 12, 4.5, 15, 6],
+          'circle-color': '#4f9d8b',
+          'circle-stroke-color': '#fff', 'circle-stroke-width': 1,
+        },
+      });
+      bindHover('cram-dots', null, f =>
+        `<div class="t-name">${f.properties.n}</div>` +
+        `<div class="t-val">補習班（${f.properties.cat}）・${f.properties.c}${f.properties.t}</div>`);
     }
 
     // 大量大頭針用 symbol layer（GPU 貼圖），tooltip 內容預存於 tip 屬性
@@ -425,6 +456,10 @@
   }
   document.getElementById('layerElem').addEventListener('change', () => { renderPins(false); });
   document.getElementById('layerKinder').addEventListener('change', () => { renderPins(false); });
+  document.getElementById('layerCram').addEventListener('change', ev => {
+    if (map.getLayer('cram-dots'))
+      map.setLayoutProperty('cram-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
+  });
 
   // ---- 大頭針（HTML Marker，保留立體造型與落下動畫）----
   const defsHost = document.createElement('div');

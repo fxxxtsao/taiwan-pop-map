@@ -1,5 +1,8 @@
 node_modules/
 
+# Google API 金鑰（勿上傳）
+.google_key
+
 # 可重新下載的大型原始資料（來源見 規格書.md §3）
 data/catalog.csv
 data/catalog_new.csv

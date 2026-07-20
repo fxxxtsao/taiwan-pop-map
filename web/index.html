@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <div id="app">
@@ -54,6 +54,8 @@
         <span class="dot elem"></span>國小 <span class="cnt" id="cntElem"></span></label>
       <label class="toggle"><input type="checkbox" id="layerKinder" checked>
         <span class="dot kinder"></span>幼兒園 <span class="cnt" id="cntKinder"></span></label>
+      <label class="toggle" id="cramRow" hidden><input type="checkbox" id="layerCram">
+        <span class="dot cram"></span>補習班（文理/外語） <span class="cnt" id="cntCram"></span></label>
       <p class="hint" style="display:flex;align-items:center;gap:8px;margin-top:4px">
         <span class="dot both"></span>大頭針：國小＋附設幼兒園（同址）</p>
       <p class="hint" id="zoomHint">放大地圖（或點選鄉鎮）即顯示學校位置</p>
@@ -107,6 +109,6 @@
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
