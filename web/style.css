@@ -180,3 +180,4 @@ section.disabled { opacity: .45; pointer-events: none; }
 .chips[hidden] { display: none; }
 
 .dot.cram { background: #4f9d8b; }
+.dot.kumon { background: #7DCDF4; }

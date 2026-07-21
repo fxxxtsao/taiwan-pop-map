@@ -1,6 +1,5 @@
-// 補習班地址地理編碼（Google Geocoding，門牌精度，可中斷續跑）
-// 升級 cram_geocoded.json 內 road 級的點；查無門牌時保留原有 Nominatim 結果。
-// 金鑰來源：環境變數 GOOGLE_MAPS_API_KEY，或專案根目錄 .google_key 檔（已列入 .gitignore）。
+// KUMON 地址地理編碼（Google，門牌精度，共用 google_cache.json）
+// 金鑰：環境變數 GOOGLE_MAPS_API_KEY，或專案根 .google_key。輸出 data/kumon_geocoded.json（以 name 為鍵）。
 const fs = require('fs');
 const path = require('path');
 
@@ -11,21 +10,20 @@ function readKey() {
   if (process.env.GOOGLE_MAPS_API_KEY) return process.env.GOOGLE_MAPS_API_KEY.trim();
   const f = path.join(root, '.google_key');
   if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
-  console.error('找不到金鑰：請設 GOOGLE_MAPS_API_KEY 環境變數，或在專案根目錄放 .google_key 檔');
+  console.error('找不到金鑰：請設 GOOGLE_MAPS_API_KEY 或在專案根放 .google_key');
   process.exit(1);
 }
 const KEY = readKey();
 
-const stage = JSON.parse(fs.readFileSync(path.join(dataDir, 'cram_stage1.json'), 'utf8'));
-const outPath = path.join(dataDir, 'cram_geocoded.json');
+const stage = JSON.parse(fs.readFileSync(path.join(dataDir, 'kumon_stage.json'), 'utf8'));
+const outPath = path.join(dataDir, 'kumon_geocoded.json');
 const results = fs.existsSync(outPath) ? JSON.parse(fs.readFileSync(outPath, 'utf8')) : {};
 const cachePath = path.join(dataDir, 'google_cache.json');
 const cache = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : {};
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// 阿拉伯數字段號轉中文（「忠孝東路4段」→「忠孝東路四段」）
-// Google 會把「4段155號」誤判成「三段4號」並回 partial_match，改中文數字才正確解析
+// 阿拉伯數字段號轉中文（Google 才不會誤解析成 partial_match）
 function toCN(n) {
   const d = '零一二三四五六七八九';
   if (n < 10) return d[n];
@@ -34,7 +32,7 @@ function toCN(n) {
 }
 function normSeg(a) { return a.replace(/(\d+)\s*段/g, (m, n) => toCN(+n) + '段'); }
 
-// 保留門牌號的清理（去除 [序號]、括號、鄰、村里、樓層之後的贅字，止於「號」）
+// 清理：去 [序號]、括號、鄰、村里、樓層之後贅字，止於「號」（保留門牌號）
 function cleanAddr(addr) {
   let a = addr.replace(/^\[\d+\]/, '').replace(/\s/g, '');
   a = a.replace(/（[^）]*）|\([^)]*\)/g, '');
@@ -45,7 +43,6 @@ function cleanAddr(addr) {
   return normSeg(a);
 }
 
-// ROOFTOP / RANGE_INTERPOLATED 且非 partial_match → 門牌精確；其餘 → 路名/概略
 const isHouse = (t, pm) => !pm && (t === 'ROOFTOP' || t === 'RANGE_INTERPOLATED');
 
 async function query(q) {
@@ -59,7 +56,7 @@ async function query(q) {
   } catch (e) {
     console.error('網路錯誤，等 5s 重試:', e.cause ? e.cause.code : e.message);
     await sleep(5000);
-    return undefined; // 交由呼叫端 while 迴圈重試
+    return undefined;
   }
   if (j.status === 'OK') {
     const g = j.results[0];
@@ -70,29 +67,27 @@ async function query(q) {
   }
   if (j.status === 'ZERO_RESULTS') { cache[q] = null; await sleep(60); return null; }
   if (j.status === 'OVER_QUERY_LIMIT') { console.error('OVER_QUERY_LIMIT, 等 30s'); await sleep(30000); return undefined; }
-  // REQUEST_DENIED / INVALID_REQUEST 等：金鑰或設定問題，停止避免空轉
   console.error('停止：Google 回', j.status, j.error_message || '');
   process.exit(1);
 }
 
 (async () => {
   console.log('total:', stage.length);
-  let n = 0, saved = 0, house = 0, road = 0, miss = 0;
+  let n = 0, house = 0, road = 0, miss = 0;
   for (const s of stage) {
-    const key = s.county + s.name;
     n++;
-    if (results[key] && results[key].src === 'house') { house++; continue; } // 已門牌精度，跳過
-    const q = s.county + cleanAddr(s.addr);
+    if (results[s.name] && results[s.name].src === 'house') { house++; continue; }
+    const q = cleanAddr(s.addr); // 地址已含縣市前綴
     let v;
-    do { v = await query(q); } while (v === undefined); // 遇 quota 重試
+    do { v = await query(q); } while (v === undefined);
     if (v) {
       const h = isHouse(v.loc, v.pm);
-      results[key] = { lat: +v.lat.toFixed(7), lon: +v.lon.toFixed(7), src: h ? 'house' : 'road' };
+      results[s.name] = { lat: +v.lat.toFixed(7), lon: +v.lon.toFixed(7), src: h ? 'house' : 'road' };
       if (h) house++; else road++;
-    } else if (!results[key] || results[key].src === 'none') {
-      results[key] = { src: 'none' }; miss++;        // 查無且原本也沒有
-    } else { road++; }                                // 查無但保留原 Nominatim
-    if (++saved % 50 === 0) {
+    } else {
+      results[s.name] = { src: 'none' }; miss++;
+    }
+    if (n % 25 === 0) {
       fs.writeFileSync(outPath, JSON.stringify(results));
       fs.writeFileSync(cachePath, JSON.stringify(cache));
       console.log(`progress ${n}/${stage.length}  house ${house} road ${road} miss ${miss}`);

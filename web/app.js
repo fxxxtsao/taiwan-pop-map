@@ -10,6 +10,7 @@
     fetch('income_villages.json').then(r => r.json()),
     fetch('cram.json').then(r => r.ok ? r.json() : null).catch(() => null), // 補習班（可能尚未產出）
   ]);
+  const kumon = await fetch('kumon.json').then(r => r.ok ? r.json() : null).catch(() => null); // KUMON 教室
 
   const townsGeo = topojson.feature(townsTopo, townsTopo.objects.towns);
   const countiesGeo = topojson.feature(countiesTopo, countiesTopo.objects.counties);
@@ -174,6 +175,20 @@
     document.getElementById('cntCram').textContent = `${cram.rows.length} 家`;
   }
 
+  // KUMON 教室（獨立圖層，湖水藍）
+  const kumonGeo = kumon ? {
+    type: 'FeatureCollection',
+    features: kumon.rows.map(r => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [r[2], r[1]] },
+      properties: { n: r[0], c: r[3], t: r[4] },
+    })),
+  } : null;
+  if (kumon) {
+    document.getElementById('kumonRow').hidden = false;
+    document.getElementById('cntKumon').textContent = `${kumon.rows.length} 家`;
+  }
+
   // ---- 圖層 ----
   // 不等 'load' 也不等 isStyleLoaded()——兩者都會等底圖圖磚，NLSC 慢或失敗時永不就緒。
   // 掛在 styledata（style 解析完就觸發，不等圖磚）；加圖層冪等化，重試不會撞 already exists。
@@ -233,6 +248,22 @@
       bindHover('cram-dots', null, f =>
         `<div class="t-name">${f.properties.n}</div>` +
         `<div class="t-val">補習班（${f.properties.cat}）・${f.properties.c}${f.properties.t}</div>`);
+    }
+
+    if (kumonGeo) {
+      addSrc('kumon', { type: 'geojson', data: kumonGeo });
+      addLyr({
+        id: 'kumon-dots', type: 'circle', source: 'kumon', minzoom: SCHOOL_MINZOOM,
+        layout: { visibility: document.getElementById('layerKumon').checked ? 'visible' : 'none' },
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3.5, 12, 5.5, 15, 7],
+          'circle-color': '#7DCDF4',
+          'circle-stroke-color': '#fff', 'circle-stroke-width': 1.2,
+        },
+      });
+      bindHover('kumon-dots', null, f =>
+        `<div class="t-name">${f.properties.n}</div>` +
+        `<div class="t-val">KUMON 教室・${f.properties.c}${f.properties.t}</div>`);
     }
 
     // 大量大頭針用 symbol layer（GPU 貼圖），tooltip 內容預存於 tip 屬性
@@ -459,6 +490,10 @@
   document.getElementById('layerCram').addEventListener('change', ev => {
     if (map.getLayer('cram-dots'))
       map.setLayoutProperty('cram-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
+  });
+  document.getElementById('layerKumon').addEventListener('change', ev => {
+    if (map.getLayer('kumon-dots'))
+      map.setLayoutProperty('kumon-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
   });
 
   // ---- 大頭針（HTML Marker，保留立體造型與落下動畫）----
