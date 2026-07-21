@@ -18,3 +18,8 @@ data/api_test.json
 data/search1.json
 data/s2.json
 data/ds17964.json
+
+# 資料查找暫存（勿上傳）
+data/catalog.csv
+data/catalog_new.csv
+data/d6086.json

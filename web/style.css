@@ -4,8 +4,8 @@
   --line: rgba(61, 65, 72, 0.08);
   --glass: rgba(255, 255, 255, 0.78);
   --accent: #c96f5e;
-  --elem: #5b8db8;
-  --kinder: #e0a458;
+  --elem: #5aa23a;
+  --kinder: #8e57c4;
   --radius: 16px;
 }
 
@@ -161,6 +161,13 @@ body {
   border: 1px solid var(--line); border-radius: 999px;
   padding: 0 6px; margin-left: 6px; vertical-align: 1px;
 }
+#tooltip .t-cnt { margin-top: 3px; font-variant-numeric: tabular-nums; }
+#tooltip .t-tier {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 4px;
+  font-size: 10.5px; color: var(--ink-soft);
+}
+#tooltip .t-tier .t-dot { width: 8px; height: 8px; border-radius: 999px; box-shadow: 0 0 0 1px rgba(255,255,255,.6) inset; }
+#tooltip .t-num { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
 /* 直方圖 */
 #hist .bar { fill: #cdd9e3; }
@@ -179,5 +186,13 @@ section.disabled { opacity: .45; pointer-events: none; }
 
 .chips[hidden] { display: none; }
 
-.dot.cram { background: #4f9d8b; }
+.dot.cram { background: #285a8c; }
 .dot.kumon { background: #7DCDF4; }
+
+.size-legend { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.sl-row { display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 8px; }
+.sl-lab { font-size: 11px; color: var(--ink-soft); }
+.sl-bar { height: 8px; border-radius: 3px; }
+.sl-bar.elem { background: linear-gradient(90deg, #d8ecc6, #aad48a, #75b84f, #468f2c, #2b6318); }
+.sl-bar.kin { background: linear-gradient(90deg, #e3d5f0, #c3a3e0, #a06fcf, #7b41b0, #54277f); }
+.sl-scale { margin-left: 82px; display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-soft); }

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <div id="app">
@@ -60,6 +60,11 @@
         <span class="dot kumon"></span>KUMON 教室 <span class="cnt" id="cntKumon"></span></label>
       <p class="hint" style="display:flex;align-items:center;gap:8px;margin-top:4px">
         <span class="dot both"></span>大頭針：國小＋附設幼兒園（同址）</p>
+      <div class="size-legend">
+        <div class="sl-row"><span class="sl-lab">國小 學生數</span><span class="sl-bar elem"></span></div>
+        <div class="sl-row"><span class="sl-lab">幼兒園 核定數</span><span class="sl-bar kin"></span></div>
+        <div class="sl-scale"><span>小</span><span>大</span></div>
+      </div>
       <p class="hint" id="zoomHint">放大地圖（或點選鄉鎮）即顯示學校位置</p>
     </section>
     <section>
@@ -111,6 +116,6 @@
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

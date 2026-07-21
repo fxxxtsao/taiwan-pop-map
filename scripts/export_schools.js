@@ -9,6 +9,8 @@ const dataDir = path.join(__dirname, '..', 'data');
 const stage = JSON.parse(fs.readFileSync(path.join(dataDir, 'schools_stage1.json'), 'utf8'));
 const geoPath = path.join(dataDir, 'geocoded.json');
 const geo = fs.existsSync(geoPath) ? JSON.parse(fs.readFileSync(geoPath, 'utf8')) : {};
+const elemStudents = JSON.parse(fs.readFileSync(path.join(dataDir, 'elem_students.json'), 'utf8')); // 國小學生數（by 學校代碼）
+const kinderFull = JSON.parse(fs.readFileSync(path.join(dataDir, 'kinder_full.json'), 'utf8')).rows; // 幼兒園 is_active=1 母體+核定數
 
 // 鄉鎮 polygon 索引
 const topo = JSON.parse(fs.readFileSync(path.join(dataDir, 'towns-10t.json'), 'utf8'));
@@ -80,7 +82,9 @@ function rows(list, type) {
       }
     }
     if (!lat) { n++; continue; }
-    out.push([shortName(s.name), +lat.toFixed(5), +lon.toFixed(5), s.pub, s.county, s.town || '', src]);
+    const row = [shortName(s.name), +lat.toFixed(5), +lon.toFixed(5), s.pub, s.county, s.town || '', src];
+    if (type === 'e') { const es = elemStudents[s.code]; row.push(es ? es.students : null, es ? es.classes : null); }
+    out.push(row);
   }
   console.log(`${type}: ${out.length} exported, ${n} still missing`);
   return out;
@@ -90,7 +94,8 @@ const out = {
   updated: new Date().toISOString().slice(0, 10),
   elemYear: 114, kinderYear: 113,
   elem: rows(stage.elems, 'e'),
-  kinder: rows(stage.kinders, 'k'),
+  // 幼兒園改用 is_active=1 母體（7,311）；schema 對齊 [name,lat,lon,pub,county,town,src,capacity]
+  kinder: kinderFull.map(r => [r[0], +r[1].toFixed(5), +r[2].toFixed(5), r[3], r[4], r[5], r[7], r[6]]),
 };
 fs.writeFileSync(path.join(__dirname, '..', 'web', 'schools.json'), JSON.stringify(out));
 console.log(`validation: 地理編碼跨區改鄉鎮中心 ${nFixed} 筆, OSM比對跨縣市剔除 ${nOsmRejected} 筆, 無法驗證捨棄 ${nRejected} 筆`);

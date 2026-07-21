@@ -45,6 +45,25 @@
   const TAIWAN_BOUNDS = [[118.0, 21.6], [122.1, 26.5]];
   const normTW = s => (s || '').replace(/臺/g, '台');
 
+  // 學校規模編碼（分位數顏色，沿用各層色相：國小藍、幼兒園琥珀）
+  const ELEM_RAMP = ['#d8ecc6', '#aad48a', '#75b84f', '#468f2c', '#2b6318']; // 草綠系，與紫色幼兒園高對比
+  const KIN_RAMP = ['#e3d5f0', '#c3a3e0', '#a06fcf', '#7b41b0', '#54277f']; // 紫色系，與暖色底圖區隔
+  const ELEM_BINS = [61, 195, 676, 1228], KIN_BINS = [46, 90, 150, 240];
+  const ELEM_TIERS = ['小型', '中小型', '中型', '大型', '超大型'];
+  const KIN_TIERS = ['小型', '中小型', '中型', '中大型', '大型'];
+  const tierIdx = (v, bins) => { let i = 0; while (i < bins.length && v > bins[i]) i++; return i; };
+  const tierBadge = (v, bins, tiers, ramp) =>
+    `<span class="t-tier"><i class="t-dot" style="background:${ramp[tierIdx(v, bins)]}"></i>${tiers[tierIdx(v, bins)]}</span>`;
+  // 連續對數色階（每個數值對應不同深淺，尾端也拉得開）；無資料灰色
+  const ELEM_DOM = [20, 3024], KIN_DOM = [12, 1200];
+  const sizeColor = (ramp, dom) => {
+    const l0 = Math.log10(dom[0]), l1 = Math.log10(dom[1]), stops = [];
+    ramp.forEach((c, i) => stops.push(l0 + (l1 - l0) * i / (ramp.length - 1), c));
+    return ['case',
+      ['<', ['coalesce', ['get', 'cnt'], -1], 0], '#c9c9c9',
+      ['interpolate', ['linear'], ['log10', ['max', ['coalesce', ['get', 'cnt'], 1], 1]], ...stops]];
+  };
+
   // ---- 數值計算 ----
   const sumBand = (ages, lo, hi) => {
     let s = 0;
@@ -150,7 +169,7 @@
     return {
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [row[2], row[1]] },
-      properties: { n: row[0], pub: row[3], c: row[4], t: row[5], k: kind },
+      properties: { n: row[0], pub: row[3], c: row[4], t: row[5], k: kind, cnt: row[7] ?? null, cl: row[8] ?? null },
     };
   }
   const schoolsGeo = {
@@ -223,12 +242,13 @@
       paint: { 'line-color': '#3d4148', 'line-width': 1.6 },
       filter: ['==', ['get', 'TOWNCODE'], ''],
     });
-    for (const [id, kind, color] of [['schools-elem', 'e', '#5b8db8'], ['schools-kinder', 'k', '#e0a458']]) {
+    for (const [id, kind, ramp, dom] of [['schools-elem', 'e', ELEM_RAMP, ELEM_DOM], ['schools-kinder', 'k', KIN_RAMP, KIN_DOM]]) {
       addLyr({
         id, type: 'circle', source: 'schools', minzoom: SCHOOL_MINZOOM,
         filter: ['==', ['get', 'k'], kind],
         paint: {
-          'circle-radius': 2.6, 'circle-color': color,
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3.4, 12, 4.8, 15, 6.4],
+          'circle-color': sizeColor(ramp, dom),
           'circle-stroke-color': '#fff', 'circle-stroke-width': 0.5,
         },
       });
@@ -241,7 +261,7 @@
         layout: { visibility: document.getElementById('layerCram').checked ? 'visible' : 'none' },
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3, 12, 4.5, 15, 6],
-          'circle-color': '#4f9d8b',
+          'circle-color': '#285a8c',
           'circle-stroke-color': '#fff', 'circle-stroke-width': 1,
         },
       });
@@ -315,8 +335,20 @@
   tryInit();
 
   function schoolTip(label) {
-    return f => `<div class="t-name">${f.properties.n}</div>` +
-      `<div class="t-val">${label}（${f.properties.pub}）・${f.properties.c}${f.properties.t}</div>`;
+    return f => {
+      const p = f.properties;
+      const c = p.cnt == null ? '' : +p.cnt;
+      let extra = '';
+      if (label === '國小' && c !== '') {
+        const per = p.cl > 0 ? Math.round(c / p.cl) : null;
+        extra = `<div class="t-cnt">學生 ${c.toLocaleString()} 人${p.cl ? ` ・ ${p.cl} 班` : ''}${per ? ` ・ 平均 ${per} 人/班` : ''}` +
+          ` ${tierBadge(c, ELEM_BINS, ELEM_TIERS, ELEM_RAMP)}</div>`;
+      } else if (label !== '國小' && c !== '' && c > 0) {
+        extra = `<div class="t-cnt">核定招收 ${c.toLocaleString()} 人 ${tierBadge(c, KIN_BINS, KIN_TIERS, KIN_RAMP)}</div>`;
+      }
+      return `<div class="t-name">${p.n}</div>` +
+        `<div class="t-val">${label}（${p.pub}）・${p.c}${p.t}</div>` + extra;
+    };
   }
 
   // ---- tooltip / hover ----
@@ -595,7 +627,13 @@
       }
       const typeLabel = it => it.cls === 'elem' ? '國小' : '幼兒園';
       const tipOf = d =>
-        d.items.map(it => `<div class="t-name">${it.s[0]}<span class="t-tag">${typeLabel(it)}</span></div>`).join('') +
+        d.items.map(it => {
+          const cnt = it.s[7];
+          const num = cnt == null ? '' : it.cls === 'elem'
+            ? ` <span class="t-num">${(+cnt).toLocaleString()} 生</span>`
+            : (cnt > 0 ? ` <span class="t-num">核定 ${cnt}</span>` : '');
+          return `<div class="t-name">${it.s[0]}<span class="t-tag">${typeLabel(it)}</span>${num}</div>`;
+        }).join('') +
         `<div class="t-val">${d.cls === 'both' ? '國小＋附設幼兒園（同址）・' : `（${d.s[3]}）・`}${d.s[4]}${d.s[5]}</div>`;
       if (rows.length && rows.length <= HTML_PINS_MAX) {
         // 少量：HTML Marker，逐支錯落落下
