@@ -45,9 +45,9 @@
   const TAIWAN_BOUNDS = [[118.0, 21.6], [122.1, 26.5]];
   const normTW = s => (s || '').replace(/臺/g, '台');
 
-  // 學校規模編碼（分位數顏色，沿用各層色相：國小藍、幼兒園琥珀）
-  const ELEM_RAMP = ['#d8ecc6', '#aad48a', '#75b84f', '#468f2c', '#2b6318']; // 草綠系，與紫色幼兒園高對比
-  const KIN_RAMP = ['#e3d5f0', '#c3a3e0', '#a06fcf', '#7b41b0', '#54277f']; // 紫色系，與暖色底圖區隔
+  // 學校規模編碼（大頭針與圓點同色相：國小深藍、幼兒園紫；綠色留給補習班）
+  const ELEM_RAMP = ['#c5dcef', '#93bcdd', '#5f93c3', '#3a6da1', '#1f4a76']; // 深藍系
+  const KIN_RAMP = ['#ffd98a', '#f0b429', '#d99400', '#b07400', '#7a5200']; // 暗金系；靠高飽和＋深描邊與暖色底圖區隔
   const ELEM_BINS = [61, 195, 676, 1228], KIN_BINS = [46, 90, 150, 240];
   const ELEM_TIERS = ['小型', '中小型', '中型', '大型', '超大型'];
   const KIN_TIERS = ['小型', '中小型', '中型', '中大型', '大型'];
@@ -242,14 +242,17 @@
       paint: { 'line-color': '#3d4148', 'line-width': 1.6 },
       filter: ['==', ['get', 'TOWNCODE'], ''],
     });
-    for (const [id, kind, ramp, dom] of [['schools-elem', 'e', ELEM_RAMP, ELEM_DOM], ['schools-kinder', 'k', KIN_RAMP, KIN_DOM]]) {
+    // 幼兒園走暖色，白邊會融進米白底圖，改用深褐描邊
+    for (const [id, kind, ramp, dom, stroke, sw] of [
+      ['schools-elem', 'e', ELEM_RAMP, ELEM_DOM, '#fff', 0.5],
+      ['schools-kinder', 'k', KIN_RAMP, KIN_DOM, 'rgba(61,43,10,0.6)', 0.7]]) {
       addLyr({
         id, type: 'circle', source: 'schools', minzoom: SCHOOL_MINZOOM,
         filter: ['==', ['get', 'k'], kind],
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3.4, 12, 4.8, 15, 6.4],
           'circle-color': sizeColor(ramp, dom),
-          'circle-stroke-color': '#fff', 'circle-stroke-width': 0.5,
+          'circle-stroke-color': stroke, 'circle-stroke-width': sw,
         },
       });
     }
@@ -261,7 +264,7 @@
         layout: { visibility: document.getElementById('layerCram').checked ? 'visible' : 'none' },
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3, 12, 4.5, 15, 6],
-          'circle-color': '#285a8c',
+          'circle-color': '#5aa23a',
           'circle-stroke-color': '#fff', 'circle-stroke-width': 1,
         },
       });
@@ -529,13 +532,27 @@
   });
 
   // ---- 大頭針（HTML Marker，保留立體造型與落下動畫）----
+  const PIN_HEAD = { elem: ['#86b5db', '#285a8c', '#14375a'], kinder: ['#ffd98a', '#c98a00', '#6b4200'] };
+  const PIN_COLLAR = { elem: '#1d4771', kinder: '#6b4a00' };
+  const headStops = ([a, b, c]) =>
+    `<stop offset="0%" stop-color="${a}"/><stop offset="55%" stop-color="${b}"/><stop offset="100%" stop-color="${c}"/>`;
+  // 對半針（國小＋附幼）頭部放大到 8.2，單色針維持 7.2
+  // 左右兩半要共用同一道球面光，所以改用 userSpaceOnUse（bbox 35%/30%/75% 依 r=8.2 換算）
+  const HEAD_LIGHT = 'gradientUnits="userSpaceOnUse" cx="-2.46" cy="-25.28" r="12.3"';
+  const HEAD_RIGHT = 'M0,-30.2 A8.2,8.2 0 0 1 0,-13.8 Z'; // 頭部右半（cy -22, r 8.2）
+  const GLOSS = both => both
+    ? 'cx="-2.7" cy="-25.4" rx="2.6" ry="1.7"'
+    : 'cx="-2.4" cy="-25" rx="2.3" ry="1.5"';
   const defsHost = document.createElement('div');
   defsHost.innerHTML = `<svg width="0" height="0" style="position:absolute"><defs>
-    ${['pinElem|#a9cbe8|#5b8db8|#35587d', 'pinKinder|#f4d49e|#e0a458|#a8742d', 'pinBoth|#c8b8e0|#8f7bb5|#5d4d80']
-      .map(s => { const [id, a, b, c] = s.split('|');
-        return `<radialGradient id="${id}" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stop-color="${a}"/><stop offset="55%" stop-color="${b}"/>
-          <stop offset="100%" stop-color="${c}"/></radialGradient>`; }).join('')}
+    ${Object.entries(PIN_HEAD).map(([k, c]) => {
+      const id = k === 'elem' ? 'pinElem' : 'pinKinder';
+      return `<radialGradient id="${id}" cx="35%" cy="30%" r="75%">${headStops(c)}</radialGradient>
+        <radialGradient id="${id}U" ${HEAD_LIGHT}>${headStops(c)}</radialGradient>`;
+    }).join('')}
+    <linearGradient id="pinBothCollar" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="50%" stop-color="${PIN_COLLAR.elem}"/>
+      <stop offset="50%" stop-color="${PIN_COLLAR.kinder}"/></linearGradient>
     <linearGradient id="pinNeedle" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0%" stop-color="#c9cdd2"/><stop offset="45%" stop-color="#f2f4f6"/>
       <stop offset="100%" stop-color="#8d9298"/></linearGradient>
@@ -544,28 +561,32 @@
 
   // 貼圖版大頭針（symbol layer 用；把同款 SVG 烙成 2x 點陣圖）
   let pinImgReady = false;
-  function pinSpriteSVG(light, base, dark, collar) {
+  function pinSpriteSVG(head, collar, head2) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="40" viewBox="-13 -36 26 40">
       <defs>
-        <radialGradient id="h" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stop-color="${light}"/><stop offset="55%" stop-color="${base}"/>
-          <stop offset="100%" stop-color="${dark}"/></radialGradient>
+        <radialGradient id="h" ${head2 ? HEAD_LIGHT : 'cx="35%" cy="30%" r="75%"'}>${headStops(head)}</radialGradient>
+        ${head2 ? `<radialGradient id="h2" ${HEAD_LIGHT}>${headStops(head2)}</radialGradient>
+        <linearGradient id="c" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="50%" stop-color="${PIN_COLLAR.elem}"/>
+          <stop offset="50%" stop-color="${PIN_COLLAR.kinder}"/></linearGradient>` : ''}
         <linearGradient id="n" x1="0" x2="1" y1="0" y2="0">
           <stop offset="0%" stop-color="#c9cdd2"/><stop offset="45%" stop-color="#f2f4f6"/>
           <stop offset="100%" stop-color="#8d9298"/></linearGradient>
       </defs>
       <ellipse cx="1.5" cy="0.6" rx="5" ry="1.8" fill="rgba(61,65,72,0.28)"/>
       <path d="M0,0 L-1.2,-13 L1.2,-13 Z" fill="url(#n)"/>
-      <rect x="-3.2" y="-16.6" width="6.4" height="4.2" rx="1.6" fill="${collar}"/>
-      <circle cy="-22" r="7.2" fill="url(#h)" stroke="rgba(255,255,255,0.55)" stroke-width="0.6"/>
-      <ellipse cx="-2.4" cy="-25" rx="2.3" ry="1.5" fill="rgba(255,255,255,0.75)"/>
+      <rect x="-3.2" y="-16.6" width="6.4" height="4.2" rx="1.6" fill="${head2 ? 'url(#c)' : collar}"/>
+      <circle cy="-22" r="${head2 ? 8.2 : 7.2}" fill="url(#h)" stroke="rgba(255,255,255,0.55)" stroke-width="0.6"/>
+      ${head2 ? `<path d="${HEAD_RIGHT}" fill="url(#h2)"/>
+      <line x1="0" y1="-30.2" x2="0" y2="-13.8" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>` : ''}
+      <ellipse ${GLOSS(head2)} fill="rgba(255,255,255,0.75)"/>
     </svg>`;
   }
   function loadPinImages() {
     const variants = {
-      'pin-elem': ['#a9cbe8', '#5b8db8', '#35587d', '#416991'],
-      'pin-kinder': ['#f4d49e', '#e0a458', '#a8742d', '#b5823c'],
-      'pin-both': ['#c8b8e0', '#8f7bb5', '#5d4d80', '#6f5e97'],
+      'pin-elem': [PIN_HEAD.elem, PIN_COLLAR.elem],
+      'pin-kinder': [PIN_HEAD.kinder, PIN_COLLAR.kinder],
+      'pin-both': [PIN_HEAD.elem, null, PIN_HEAD.kinder],
     };
     let n = 0;
     for (const [name, c] of Object.entries(variants)) {
@@ -589,7 +610,12 @@
     pinsShown = false;
   }
   function pinElement(cls, delay) {
-    const grad = cls === 'both' ? 'pinBoth' : cls === 'elem' ? 'pinElem' : 'pinKinder';
+    // both：左半國小藍、右半幼兒園黃（共用同一道球面光）
+    const head = cls === 'both'
+      ? `<circle class="pin-head" cy="-22" r="8.2" fill="url(#pinElemU)"/>
+         <path d="${HEAD_RIGHT}" fill="url(#pinKinderU)"/>
+         <line class="pin-split" x1="0" y1="-30.2" x2="0" y2="-13.8"/>`
+      : `<circle class="pin-head" cy="-22" r="7.2" fill="url(#${cls === 'elem' ? 'pinElem' : 'pinKinder'})"/>`;
     const el = document.createElement('div');
     el.className = 'pin ' + cls;
     el.innerHTML = `<svg width="26" height="40" viewBox="-13 -36 26 40" style="--d:${delay}ms">
@@ -597,8 +623,8 @@
       <g class="pin-body">
         <path d="M0,0 L-1.2,-13 L1.2,-13 Z" fill="url(#pinNeedle)"/>
         <rect class="pin-collar" x="-3.2" y="-16.6" width="6.4" height="4.2" rx="1.6"/>
-        <circle class="pin-head" cy="-22" r="7.2" fill="url(#${grad})"/>
-        <ellipse class="pin-gloss" cx="-2.4" cy="-25" rx="2.3" ry="1.5"/>
+        ${head}
+        <ellipse class="pin-gloss" ${GLOSS(cls === 'both')}/>
       </g></svg>`;
     return el;
   }
@@ -613,7 +639,7 @@
         for (const s of schools.elem) if (test(s)) items.push({ s, cls: 'elem' });
       if (document.getElementById('layerKinder').checked)
         for (const s of schools.kinder) if (test(s)) items.push({ s, cls: 'kinder' });
-      // 同座標合併（國小＋附幼 → 紫針）
+      // 同座標合併（國小＋附幼 → 藍黃對半針）
       const byCoord = new Map();
       for (const it of items) {
         const key = it.s[1] + ',' + it.s[2];
