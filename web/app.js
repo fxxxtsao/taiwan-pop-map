@@ -13,6 +13,7 @@
   const kumon = await fetch('kumon.json').then(r => r.ok ? r.json() : null).catch(() => null); // KUMON 教室
   const meiko = await fetch('meiko.json').then(r => r.ok ? r.json() : null).catch(() => null); // 明光義塾 教室
   const mpm = await fetch('mpm.json').then(r => r.ok ? r.json() : null).catch(() => null); // MPM 數學 教室
+  const tact = await fetch('tact.json').then(r => r.ok ? r.json() : null).catch(() => null); // 台灣拓人 教室
 
   const townsGeo = topojson.feature(townsTopo, townsTopo.objects.towns);
   const countiesGeo = topojson.feature(countiesTopo, countiesTopo.objects.counties);
@@ -236,6 +237,20 @@
     document.getElementById('cntMpm').textContent = `${mpm.rows.length} 家`;
   }
 
+  // 台灣拓人 教室（獨立圖層，紅）
+  const tactGeo = tact ? {
+    type: 'FeatureCollection',
+    features: tact.rows.map(r => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [r[2], r[1]] },
+      properties: { n: r[0], c: r[3], t: r[4] },
+    })),
+  } : null;
+  if (tact) {
+    document.getElementById('tactRow').hidden = false;
+    document.getElementById('cntTact').textContent = `${tact.rows.length} 家`;
+  }
+
   // ---- 圖層 ----
   // 不等 'load' 也不等 isStyleLoaded()——兩者都會等底圖圖磚，NLSC 慢或失敗時永不就緒。
   // 掛在 styledata（style 解析完就觸發，不等圖磚）；加圖層冪等化，重試不會撞 already exists。
@@ -347,6 +362,22 @@
       bindHover('mpm-dots', null, f =>
         `<div class="t-name">${/mpm/i.test(f.properties.n) ? f.properties.n : 'MPM ' + f.properties.n}</div>` +
         `<div class="t-val">MPM 數學・${f.properties.c}${f.properties.t}</div>`);
+    }
+
+    if (tactGeo) {
+      addSrc('tact', { type: 'geojson', data: tactGeo });
+      addLyr({
+        id: 'tact-dots', type: 'circle', source: 'tact', minzoom: SCHOOL_MINZOOM,
+        layout: { visibility: document.getElementById('layerTact').checked ? 'visible' : 'none' },
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3.5, 12, 5.5, 15, 7],
+          'circle-color': '#dc2626',
+          'circle-stroke-color': '#fff', 'circle-stroke-width': 1.2,
+        },
+      });
+      bindHover('tact-dots', null, f =>
+        `<div class="t-name">${f.properties.n}</div>` +
+        `<div class="t-val">台灣拓人・${f.properties.c}${f.properties.t}</div>`);
     }
 
     // 大量大頭針用 symbol layer（GPU 貼圖），tooltip 內容預存於 tip 屬性
@@ -599,6 +630,11 @@
   document.getElementById('layerMpm').addEventListener('change', ev => {
     if (map.getLayer('mpm-dots'))
       map.setLayoutProperty('mpm-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
+  });
+
+  document.getElementById('layerTact').addEventListener('change', ev => {
+    if (map.getLayer('tact-dots'))
+      map.setLayoutProperty('tact-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
   });
 
   // ---- 大頭針（HTML Marker，保留立體造型與落下動畫）----
