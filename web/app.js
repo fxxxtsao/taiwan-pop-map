@@ -12,6 +12,7 @@
   ]);
   const kumon = await fetch('kumon.json').then(r => r.ok ? r.json() : null).catch(() => null); // KUMON 教室
   const meiko = await fetch('meiko.json').then(r => r.ok ? r.json() : null).catch(() => null); // 明光義塾 教室
+  const mpm = await fetch('mpm.json').then(r => r.ok ? r.json() : null).catch(() => null); // MPM 數學 教室
 
   const townsGeo = topojson.feature(townsTopo, townsTopo.objects.towns);
   const countiesGeo = topojson.feature(countiesTopo, countiesTopo.objects.counties);
@@ -25,12 +26,10 @@
   // ---- 狀態 ----
   const BANDS = [
     { label: '總人口', min: 0, max: 100 },
-    { label: '0–5 學齡前', min: 0, max: 5 },
+    { label: '0–2 嬰幼兒', min: 0, max: 2 },
+    { label: '3–5 幼兒園', min: 3, max: 5 },
     { label: '6–11 國小', min: 6, max: 11 },
     { label: '12–17 國高中', min: 12, max: 17 },
-    { label: '18–39', min: 18, max: 39 },
-    { label: '40–64', min: 40, max: 64 },
-    { label: '65+ 高齡', min: 65, max: 100 },
   ];
   let band = { min: 0, max: 100 };
   let metric = 'count';  // count | share
@@ -223,6 +222,20 @@
     document.getElementById('cntMeiko').textContent = `${meiko.rows.length} 家`;
   }
 
+  // MPM 數學 教室（獨立圖層，青綠）
+  const mpmGeo = mpm ? {
+    type: 'FeatureCollection',
+    features: mpm.rows.map(r => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [r[2], r[1]] },
+      properties: { n: r[0], c: r[3], t: r[4] },
+    })),
+  } : null;
+  if (mpm) {
+    document.getElementById('mpmRow').hidden = false;
+    document.getElementById('cntMpm').textContent = `${mpm.rows.length} 家`;
+  }
+
   // ---- 圖層 ----
   // 不等 'load' 也不等 isStyleLoaded()——兩者都會等底圖圖磚，NLSC 慢或失敗時永不就緒。
   // 掛在 styledata（style 解析完就觸發，不等圖磚）；加圖層冪等化，重試不會撞 already exists。
@@ -318,6 +331,22 @@
       bindHover('meiko-dots', null, f =>
         `<div class="t-name">${f.properties.n}</div>` +
         `<div class="t-val">明光義塾・${f.properties.c}${f.properties.t}</div>`);
+    }
+
+    if (mpmGeo) {
+      addSrc('mpm', { type: 'geojson', data: mpmGeo });
+      addLyr({
+        id: 'mpm-dots', type: 'circle', source: 'mpm', minzoom: SCHOOL_MINZOOM,
+        layout: { visibility: document.getElementById('layerMpm').checked ? 'visible' : 'none' },
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8.2, 3.5, 12, 5.5, 15, 7],
+          'circle-color': '#14b8a6',
+          'circle-stroke-color': '#fff', 'circle-stroke-width': 1.2,
+        },
+      });
+      bindHover('mpm-dots', null, f =>
+        `<div class="t-name">${/mpm/i.test(f.properties.n) ? f.properties.n : 'MPM ' + f.properties.n}</div>` +
+        `<div class="t-val">MPM 數學・${f.properties.c}${f.properties.t}</div>`);
     }
 
     // 大量大頭針用 symbol layer（GPU 貼圖），tooltip 內容預存於 tip 屬性
@@ -565,6 +594,11 @@
   document.getElementById('layerMeiko').addEventListener('change', ev => {
     if (map.getLayer('meiko-dots'))
       map.setLayoutProperty('meiko-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
+  });
+
+  document.getElementById('layerMpm').addEventListener('change', ev => {
+    if (map.getLayer('mpm-dots'))
+      map.setLayoutProperty('mpm-dots', 'visibility', ev.target.checked ? 'visible' : 'none');
   });
 
   // ---- 大頭針（HTML Marker，保留立體造型與落下動畫）----

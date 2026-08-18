@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣人口年齡地圖｜鄉鎮市區分布</title>
+<title>展店地圖｜鄉鎮市區分布</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
 <div id="app">
   <div id="map"></div>
 
   <header class="card" id="titlebar">
-    <h1>台灣人口年齡地圖</h1>
-    <p>全台 368 鄉鎮市區・依年齡層人口熱力圖<span id="period"></span></p>
+    <h1>展店地圖</h1>
+    <p>全台 368 鄉鎮市區・小學幼兒園＋補教據點分布<span id="period"></span></p>
   </header>
 
   <aside class="card" id="controls">
@@ -38,14 +38,10 @@
       </div>
     </section>
     <section>
-      <h2>呈現方式</h2>
-      <div class="chips" id="metric">
-        <button data-m="count" class="active">人口數</button>
-        <button data-m="share">占總人口比例</button>
-      </div>
-      <div class="chips" id="metricIncome" hidden>
-        <button data-m="med" class="active">中位數</button>
-        <button data-m="avg">平均數</button>
+      <h2>縣市篩選</h2>
+      <div class="row">
+        <select id="countySel"><option value="">全台灣</option></select>
+        <button id="resetBtn" title="回到全圖">↺ 重設</button>
       </div>
     </section>
     <section>
@@ -60,6 +56,8 @@
         <span class="dot kumon"></span>KUMON 教室 <span class="cnt" id="cntKumon"></span></label>
       <label class="toggle" id="meikoRow" hidden><input type="checkbox" id="layerMeiko">
         <span class="dot meiko"></span>明光義塾 <span class="cnt" id="cntMeiko"></span></label>
+      <label class="toggle" id="mpmRow" hidden><input type="checkbox" id="layerMpm">
+        <span class="dot mpm"></span>MPM 數學 <span class="cnt" id="cntMpm"></span></label>
       <p class="hint" style="display:flex;align-items:center;gap:8px;margin-top:4px">
         <span class="dot both"></span>大頭針：國小＋附設幼兒園（同址）</p>
       <div class="size-legend">
@@ -76,9 +74,14 @@
       <p class="hint" id="villLoading" hidden>村里資料載入中…</p>
     </section>
     <section>
-      <div class="row">
-        <select id="countySel"><option value="">全台灣</option></select>
-        <button id="resetBtn" title="回到全圖">↺ 重設</button>
+      <h2>呈現方式</h2>
+      <div class="chips" id="metric">
+        <button data-m="count" class="active">人口數</button>
+        <button data-m="share">占總人口比例</button>
+      </div>
+      <div class="chips" id="metricIncome" hidden>
+        <button data-m="med" class="active">中位數</button>
+        <button data-m="avg">平均數</button>
       </div>
     </section>
   </aside>
@@ -118,6 +121,6 @@
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
