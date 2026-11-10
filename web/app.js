@@ -14,6 +14,7 @@
   const meiko = await fetch('meiko.json').then(r => r.ok ? r.json() : null).catch(() => null); // 明光義塾 教室
   const mpm = await fetch('mpm.json').then(r => r.ok ? r.json() : null).catch(() => null); // MPM 數學 教室
   const tact = await fetch('tact.json').then(r => r.ok ? r.json() : null).catch(() => null); // 台灣拓人 教室
+  const growth = await fetch('pop_growth.json').then(r => r.ok ? r.json() : null).catch(() => null); // 近五年人口成長（scripts/build_pop_growth.js）
 
   const townsGeo = topojson.feature(townsTopo, townsTopo.objects.towns);
   const countiesGeo = topojson.feature(countiesTopo, countiesTopo.objects.counties);
@@ -39,6 +40,11 @@
   let selectedCode = null;
   let pinScope = null;   // {type:'town'|'county', key} 大頭針範圍
   let pinsShown = false;
+  let roleMode = 'ops';          // ops | exec  角色模式（營運 / 高階主管）
+  let execRole = new Map();      // TOWNCODE -> 1 拓荒潛力 | -1 飽和警戒 | 0
+  let execRowByCode = new Map(); // TOWNCODE -> {schoolAge, own, mkt}
+  let execResult = null;
+  let execScopeCounty = '';      // 高階主管面板目前縮放的縣市（''＝全台）
   const SCHOOL_MINZOOM = 8.2; // 舊版 zoomK≈3
   const VILL_MINZOOM = 9.3;   // 舊版 zoomK≈6
   const HTML_PINS_MAX = 150;  // 少量用 HTML Marker（逐支落下動畫）；超過改 GPU symbol layer（全體落下）
@@ -155,6 +161,7 @@
     center: [120.9, 23.85], zoom: 6.3, // 於 load 時再以 fitBounds 精準對位（constructor bounds 在部分環境會算錯 zoom）
     minZoom: 5.5, maxZoom: 17.5,
     attributionControl: false,
+    preserveDrawingBuffer: true, // 保留繪圖緩衝，讓地圖截圖（toDataURL）能取到畫面
     dragRotate: false, pitchWithRotate: false,
   });
   map.touchZoomRotate.disableRotation();
@@ -285,6 +292,24 @@
       paint: { 'line-color': '#3d4148', 'line-width': 1.6 },
       filter: ['==', ['get', 'TOWNCODE'], ''],
     });
+    // 空白市場探測：符合條件的鄉鎮金色發光外框（由 feature-state ws 控制）
+    addLyr({
+      id: 'ws-outline', type: 'line', source: 'towns',
+      paint: {
+        'line-color': '#e8991f', 'line-width': 2.6, 'line-blur': 0.8,
+        'line-opacity': ['case', ['boolean', ['feature-state', 'ws'], false], 0.95, 0],
+      },
+    });
+    // 現勘生活圈緩衝區（空源，落在學校點之下；實際幾何由 updateBuffer 以 setData 更新）
+    addSrc('survey-buf', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    addLyr({
+      id: 'survey-buf-fill', type: 'fill', source: 'survey-buf',
+      paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.12 },
+    });
+    addLyr({
+      id: 'survey-buf-line', type: 'line', source: 'survey-buf',
+      paint: { 'line-color': '#2563eb', 'line-width': 1.6, 'line-opacity': 0.75, 'line-dasharray': [2, 1.5] },
+    });
     // 幼兒園走暖色，白邊會融進米白底圖，改用深褐描邊
     for (const [id, kind, ramp, dom, stroke, sw] of [
       ['schools-elem', 'e', ELEM_RAMP, ELEM_DOM, '#fff', 0.5],
@@ -392,8 +417,29 @@
     loadPinImages();
     bindHover('pins-sym', null, f => f.properties.tip);
 
+    // 高階主管：點鄉鎮時顯示該區各品牌據點（空源，selectExecTown 以 setData 填入）
+    addSrc('exec-comp', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    addLyr({
+      id: 'exec-comp-dots', type: 'circle', source: 'exec-comp',
+      layout: { visibility: 'none', 'circle-sort-key': ['get', 'pri'] }, // pri 越大越上層，KUMON 在最上
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 15, 8],
+        'circle-color': ['get', 'color'],
+        'circle-stroke-color': 'rgba(45,50,58,0.55)', 'circle-stroke-width': 1.2,
+      },
+    });
+    bindHover('exec-comp-dots', null, f =>
+      `<div class="t-name">${f.properties.n}</div><div class="t-val">${f.properties.brand}</div>`);
+
     bindHover('towns-fill', 'towns', f => {
       const code = f.properties.TOWNCODE;
+      if (roleMode === 'exec') {
+        const r = execRowByCode.get(code), role = execRole.get(code);
+        const tag = role === 1 ? '<span style="color:#3a8c5f">・拓荒潛力</span>'
+          : role === -1 ? '<span style="color:#c0483a">・飽和警戒</span>' : '';
+        return `<div class="t-name">${f.properties.COUNTYNAME}${f.properties.TOWNNAME}${tag}</div>` +
+          (r ? `<div class="t-val">學齡兒童 ${fmtCount(r.schoolAge)}・自家 ${r.own}・補教 ${r.mkt} 家</div>` : '');
+      }
       const t = pop.towns[code];
       const v = valueOf(code);
       const extra = theme === 'income'
@@ -406,6 +452,12 @@
     bindHover('schools-kinder', null, schoolTip('幼兒園'));
 
     map.on('click', ev => {
+      if (placeMode) return; // 放置勘查點模式下，點擊只放針、不選鄉鎮
+      if (roleMode === 'exec') { // 高階主管模式：點鄉鎮看現況
+        const fs = map.queryRenderedFeatures(ev.point, { layers: ['towns-fill'] });
+        if (fs.length) selectExecTown(fs[0].properties.TOWNCODE);
+        return;
+      }
       const layers = ['towns-fill'];
       if (map.getLayer('villages-fill')) layers.push('villages-fill');
       const fs = map.queryRenderedFeatures(ev.point, { layers });
@@ -574,6 +626,14 @@
   }
 
   function updateLevel() {
+    if (roleMode === 'exec') { // 高階主管模式固定用鄉鎮著色，不切村里
+      if (map.getLayer('villages-fill'))
+        for (const id of ['villages-fill', 'villages-hover', 'villages-line'])
+          map.setLayoutProperty(id, 'visibility', 'none');
+      map.setLayoutProperty('towns-fill', 'visibility', 'visible');
+      map.setLayoutProperty('towns-hover', 'visibility', 'visible');
+      return;
+    }
     if (map.getZoom() >= VILL_MINZOOM && document.getElementById('layerVill').checked) ensureVillages();
     const useVill = !!villMode();
     if (map.getLayer('villages-fill')) {
@@ -736,6 +796,7 @@
   }
   function renderPins(animate = true) {
     clearPins();
+    if (roleMode === 'exec') return; // 高階主管模式不畫學校大頭針
     if (pinScope) {
       const test = pinScope.type === 'town'
         ? s => normTW(s[4] + s[5]) === pinScope.key
@@ -896,7 +957,57 @@
       .attr('x', a => a * bw).attr('y', 89)
       .attr('font-size', 9).attr('fill', '#8a8f98')
       .text(a => a);
+
+    renderSchoolTab(code);
+    renderCompTab(code);
   }
+
+  // ---- 詳情多頁籤：學校學區 / 補教競品 ----
+  // 品牌：label, 資料, 縣市欄, 鄉鎮欄, 顏色（cram 欄位不同）
+  const DRAWER_BRANDS = [['KUMON', kumon, 3, 4, '#7DCDF4'], ['明光義塾', meiko, 3, 4, '#cb5cf0'],
+    ['MPM 數學', mpm, 3, 4, '#14b8a6'], ['台灣拓人', tact, 3, 4, '#dc2626'], ['補習班', cram, 4, 5, '#5aa23a']];
+  function renderSchoolTab(code) {
+    const t = pop.towns[code];
+    const key = normTW(t ? t.name : '');
+    const elems = schools.elem.filter(s => normTW(s[4] + s[5]) === key)
+      .map(s => ({ n: s[0], cnt: +s[7] || 0 })).sort((a, b) => b.cnt - a.cnt);
+    const kinders = schools.kinder.filter(s => normTW(s[4] + s[5]) === key)
+      .map(s => ({ n: s[0], cap: +s[7] || 0 }));
+    const elemList = elems.map(e =>
+      `<div class="tl-item"><span class="tl-n">${e.n}</span>` +
+      `<span class="tl-x">${e.cnt ? e.cnt.toLocaleString() + ' 生' : '—'} ${tierBadge(e.cnt, ELEM_BINS, ELEM_TIERS, ELEM_RAMP)}</span></div>`).join('')
+      || '<div class="tl-empty">此區無國小資料</div>';
+    const kinderList = kinders.map(k =>
+      `<div class="tl-item"><span class="tl-n">${k.n}</span>` +
+      `<span class="tl-x">${k.cap ? '核定 ' + k.cap : ''}</span></div>`).join('')
+      || '<div class="tl-empty">此區無幼兒園資料</div>';
+    document.getElementById('tabSchool').innerHTML =
+      `<div class="tl-sec">國小（${elems.length}）· 依學生數排序</div><div class="tl-list">${elemList}</div>` +
+      `<div class="tl-sec">幼兒園（${kinders.length}）</div><div class="tl-list">${kinderList}</div>`;
+  }
+  function renderCompTab(code) {
+    const t = pop.towns[code];
+    const key = normTW(t ? t.name : '');
+    let html = '', any = false;
+    for (const [label, data, ci, ti, color] of DRAWER_BRANDS) {
+      if (!data || !data.rows) continue;
+      const names = data.rows.filter(r => normTW((r[ci] || '') + (r[ti] || '')) === key).map(r => r[0]);
+      if (names.length) any = true;
+      html += `<div class="cb-head"><span class="dot" style="background:${color}"></span>${label} <span class="cb-n">${names.length}</span></div>` +
+        (names.length ? `<div class="cb-names">${names.map(n => `<span>${n}</span>`).join('')}</div>` : '');
+    }
+    document.getElementById('tabComp').innerHTML = any ? html : '<div class="tl-empty">此區無補教資料</div>';
+  }
+  // 詳情頁籤切換
+  document.querySelectorAll('#detailTabs button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#detailTabs button').forEach(x => x.classList.toggle('active', x === b));
+      const tab = b.dataset.tab;
+      document.getElementById('tabPop').hidden = tab !== 'pop';
+      document.getElementById('tabSchool').hidden = tab !== 'school';
+      document.getElementById('tabComp').hidden = tab !== 'comp';
+    });
+  });
 
   // ---- 底圖開關 ----
   document.getElementById('layerRoad').addEventListener('change', () => {
@@ -990,4 +1101,710 @@
     map.fitBounds(TAIWAN_BOUNDS, { padding: 40, duration: 650 });
   }
   document.getElementById('resetBtn').addEventListener('click', resetView);
+
+  // ---- 空白市場探測 ----
+  // 排除的競品只列自家四品牌（補習班 cram 遍地都是，當「無競爭」沒意義）
+  const WS_NAMED = [['KUMON', kumon, 3, 4], ['明光義塾', meiko, 3, 4], ['MPM 數學', mpm, 3, 4], ['台灣拓人', tact, 3, 4]];
+  let townCentroids = null;
+  function ensureCentroids() {
+    if (townCentroids) return;
+    townCentroids = new Map();
+    for (const f of towns) {
+      let c;
+      try { c = turf.centroid(f).geometry.coordinates; }
+      catch { const b = bboxOf([f]); c = [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2]; }
+      townCentroids.set(f.properties.TOWNCODE, c);
+    }
+  }
+  function wsBrandPoints(key) {
+    const list = key === 'any' ? WS_NAMED : WS_NAMED.filter(b => b[0] === key);
+    const pts = [];
+    for (const [, data] of list) {
+      if (!data || !data.rows) continue;
+      for (const r of data.rows) if (isFinite(r[1]) && isFinite(r[2])) pts.push([r[2], r[1]]);
+    }
+    return pts;
+  }
+  function runWhiteSpace() {
+    ensureCentroids();
+    const minAge = +document.getElementById('wsAge').value || 0;
+    const minIncRaw = (+document.getElementById('wsInc').value || 0) * 10; // 使用者填「萬」，內部值/10=萬
+    const brandKey = document.getElementById('wsBrand').value;
+    const radiusKm = +document.getElementById('wsRadius').value || 1.5;
+    const rDeg = radiusKm / 100; // 粗略外框先濾遠點，再算真實距離
+    const pts = wsBrandPoints(brandKey);
+    const hits = [];
+    for (const f of towns) {
+      const code = f.properties.TOWNCODE;
+      const t = pop.towns[code];
+      let ok = false;
+      if (t) {
+        const schoolAge = sumBand(t.ages, 3, 12);
+        const iv = income.towns[code];
+        const incMed = iv ? iv[2] : 0;
+        if (schoolAge >= minAge && (minIncRaw <= 0 || incMed >= minIncRaw)) {
+          const c = townCentroids.get(code);
+          let near = false;
+          for (const p of pts) {
+            if (Math.abs(p[0] - c[0]) > rDeg || Math.abs(p[1] - c[1]) > rDeg) continue;
+            if (turf.distance(c, p, { units: 'kilometers' }) <= radiusKm) { near = true; break; }
+          }
+          if (!near) { ok = true; hits.push({ code, name: f.properties.COUNTYNAME + f.properties.TOWNNAME, schoolAge }); }
+        }
+      }
+      map.setFeatureState({ source: 'towns', id: code }, { ws: ok });
+    }
+    hits.sort((a, b) => b.schoolAge - a.schoolAge);
+    const top = hits.slice(0, 10);
+    document.getElementById('wsResults').innerHTML =
+      `<div class="ws-count">符合 ${hits.length} 區 · Top ${top.length}</div>` +
+      (top.map(h => `<div class="ws-item" data-code="${h.code}"><span>${h.name}</span>` +
+        `<span class="ws-x">學齡 ${fmtCount(h.schoolAge)}</span></div>`).join('') ||
+       '<div class="tl-empty">無符合條件的區</div>');
+  }
+  function clearWhiteSpace() {
+    if (map.getSource('towns')) for (const f of towns) map.setFeatureState({ source: 'towns', id: f.properties.TOWNCODE }, { ws: false });
+    const box = document.getElementById('wsResults'); if (box) box.innerHTML = '';
+  }
+  document.getElementById('wsRun').addEventListener('click', runWhiteSpace);
+  document.getElementById('wsClear').addEventListener('click', clearWhiteSpace);
+  document.getElementById('wsResults').addEventListener('click', e => {
+    const it = e.target.closest('.ws-item'); if (!it) return;
+    const f = towns.find(t => t.properties.TOWNCODE === it.dataset.code);
+    if (f) selectTown(f);
+  });
+
+  // ---- 側邊欄收合 ----
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  function setSidebar(collapsed) {
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    sidebarToggle.textContent = collapsed ? '▶' : '◀';
+  }
+  const toggleSidebar = () => setSidebar(!document.body.classList.contains('sidebar-collapsed'));
+  sidebarToggle.addEventListener('click', toggleSidebar);
+  document.addEventListener('keydown', e => {
+    if (e.key !== '[') return;
+    const t = e.target;
+    if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return; // 輸入中不觸發
+    toggleSidebar();
+  });
+
+  // ---- 全域搜尋（行政區 / 學校 / 品牌據點）----
+  // 品牌各資料集欄位：kumon/meiko/mpm/tact 為 [名, lat, lng, 縣市, 鄉鎮]；cram 為 [名, lat, lng, 類別, 縣市, 鄉鎮]
+  const searchIndex = [];
+  for (const f of towns) {
+    const p2 = f.properties;
+    searchIndex.push({ name: p2.COUNTYNAME + p2.TOWNNAME, tag: '行政區', tagCls: 't-town',
+      sub: '', kind: 'town', feature: f, key: normTW(p2.COUNTYNAME + p2.TOWNNAME) });
+  }
+  for (const [rows, tag, tagCls] of [[schools.elem, '國小', 't-elem'], [schools.kinder, '幼兒園', 't-kinder']]) {
+    for (const s of rows) {
+      if (!isFinite(s[1]) || !isFinite(s[2])) continue;
+      searchIndex.push({ name: s[0], tag, tagCls, sub: normTW((s[4] || '') + (s[5] || '')),
+        kind: 'point', lng: s[2], lat: s[1], key: normTW(s[0] || '') });
+    }
+  }
+  for (const [label, data, ci, ti] of [
+    ['KUMON', kumon, 3, 4], ['明光義塾', meiko, 3, 4], ['MPM 數學', mpm, 3, 4],
+    ['台灣拓人', tact, 3, 4], ['補習班', cram, 4, 5]]) {
+    if (!data || !data.rows) continue;
+    for (const r of data.rows) {
+      if (!isFinite(r[1]) || !isFinite(r[2])) continue;
+      searchIndex.push({ name: r[0], tag: label, tagCls: 't-brand', sub: normTW((r[ci] || '') + (r[ti] || '')),
+        kind: 'point', lng: r[2], lat: r[1], key: normTW(r[0] || '') });
+    }
+  }
+
+  const searchInput = document.getElementById('globalSearch');
+  const searchBox = document.getElementById('searchResults');
+  let searchHits = [], searchActive = -1;
+
+  function runSearch(q) {
+    q = normTW(q.trim());
+    if (q.length < 1) { searchBox.hidden = true; searchHits = []; return; }
+    const starts = [], contains = [];
+    for (const it of searchIndex) {
+      const i = it.key.indexOf(q);
+      if (i === 0) starts.push(it);
+      else if (i > 0) contains.push(it);
+      if (starts.length >= 40) break;
+    }
+    searchHits = starts.concat(contains).slice(0, 40);
+    searchActive = -1;
+    renderSearch();
+  }
+  function renderSearch() {
+    if (!searchHits.length) {
+      searchBox.innerHTML = '<div class="search-empty">找不到符合的地點</div>';
+      searchBox.hidden = false; return;
+    }
+    searchBox.innerHTML = searchHits.map((it, i) =>
+      `<div class="search-item${i === searchActive ? ' active' : ''}" data-i="${i}">` +
+      `<span class="s-tag ${it.tagCls}">${it.tag}</span>` +
+      `<span class="s-name">${it.name}</span>` +
+      (it.sub ? `<span class="s-sub">${it.sub}</span>` : '') + '</div>').join('');
+    searchBox.hidden = false;
+  }
+  function chooseHit(it) {
+    if (!it) return;
+    searchBox.hidden = true;
+    searchInput.value = it.name;
+    if (it.kind === 'town') {
+      selectTown(it.feature);
+    } else {
+      map.flyTo({ center: [it.lng, it.lat], zoom: 15, duration: 800 });
+      map.once('moveend', () => {
+        const pt = map.project([it.lng, it.lat]);
+        const rect = map.getCanvas().getBoundingClientRect();
+        tooltip.hidden = false;
+        tooltip.style.left = (rect.left + pt.x + 12) + 'px';
+        tooltip.style.top = (rect.top + pt.y + 10) + 'px';
+        tooltip.innerHTML = `<div class="t-name">${it.name}</div>` +
+          `<div class="t-val">${it.tag}${it.sub ? '・' + it.sub : ''}</div>`;
+        setTimeout(() => { tooltip.hidden = true; }, 2600);
+      });
+    }
+  }
+  searchInput.addEventListener('input', () => runSearch(searchInput.value));
+  searchInput.addEventListener('focus', () => { if (searchInput.value) runSearch(searchInput.value); });
+  searchInput.addEventListener('keydown', e => {
+    if (searchBox.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); searchActive = Math.min(searchActive + 1, searchHits.length - 1); renderSearch(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); searchActive = Math.max(searchActive - 1, 0); renderSearch(); }
+    else if (e.key === 'Enter') { e.preventDefault(); chooseHit(searchHits[searchActive] || searchHits[0]); }
+    else if (e.key === 'Escape') { searchBox.hidden = true; searchInput.blur(); }
+  });
+  searchBox.addEventListener('mousedown', e => {
+    const item = e.target.closest('.search-item');
+    if (item) { e.preventDefault(); chooseHit(searchHits[+item.dataset.i]); }
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.nav-search')) searchBox.hidden = true;
+  });
+
+  // ---- 現勘勘查點 + 生活圈緩衝區 ----
+  let placeMode = false;
+  let surveyMarker = null, surveyLngLat = null, surveyRadius = 1000; // 半徑（公尺），預設 1km
+  let bufferPoly = null, surveyData = null;
+  const BRANDS = [['KUMON', kumon], ['明光義塾', meiko], ['MPM 數學', mpm], ['台灣拓人', tact], ['補習班', cram]];
+
+  function setPlaceMode(on) {
+    placeMode = on;
+    document.body.classList.toggle('place-mode', on);
+    document.getElementById('fabSurvey').classList.toggle('active', on);
+  }
+  document.getElementById('fabSurvey').addEventListener('click', () => setPlaceMode(!placeMode));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && placeMode) setPlaceMode(false); });
+
+  // 藍色勘查大頭針（HTML Marker，沿用落下動畫；註：WebGL 截圖不含 HTML Marker）
+  function surveyPinElement() {
+    const el = document.createElement('div');
+    el.className = 'pin survey';
+    el.innerHTML = `<svg width="30" height="46" viewBox="-15 -42 30 46">
+      <ellipse class="pin-shadow" cx="1.5" cy="0.6" rx="6" ry="2"/>
+      <g class="pin-body">
+        <path d="M0,0 L-1.4,-15 L1.4,-15 Z" fill="url(#pinNeedle)"/>
+        <rect class="pin-collar" x="-3.6" y="-19" width="7.2" height="4.6" rx="1.6"/>
+        <circle class="pin-head" cy="-25" r="9" fill="#2563eb"/>
+        <ellipse class="pin-gloss" cx="-2.8" cy="-28" rx="2.8" ry="1.8"/>
+      </g></svg>`;
+    return el;
+  }
+
+  function updateBuffer() {
+    if (!surveyLngLat || !map.getSource('survey-buf')) return;
+    bufferPoly = turf.circle([surveyLngLat.lng, surveyLngLat.lat], surveyRadius / 1000, { steps: 72, units: 'kilometers' });
+    map.getSource('survey-buf').setData(bufferPoly);
+  }
+
+  function runSurveyAnalysis() {
+    if (!bufferPoly || !surveyLngLat) return;
+    const center = [surveyLngLat.lng, surveyLngLat.lat];
+    const inBuf = (lng, lat) => turf.booleanPointInPolygon([lng, lat], bufferPoly);
+    const distM = (lng, lat) => Math.round(turf.distance(center, [lng, lat], { units: 'kilometers' }) * 1000);
+    const elemHits = [];
+    let elemStudents = 0;
+    for (const s of schools.elem) {
+      if (!isFinite(s[1]) || !isFinite(s[2]) || !inBuf(s[2], s[1])) continue;
+      const cnt = +s[7] || 0;
+      elemStudents += cnt;
+      elemHits.push({ name: s[0], cnt, dist: distM(s[2], s[1]) });
+    }
+    elemHits.sort((a, b) => a.dist - b.dist);
+    let kinderCount = 0;
+    for (const s of schools.kinder)
+      if (isFinite(s[1]) && isFinite(s[2]) && inBuf(s[2], s[1])) kinderCount++;
+    const brandStats = [];
+    for (const [label, data] of BRANDS) {
+      if (!data || !data.rows) { brandStats.push({ label, count: 0, nearest: null }); continue; }
+      let count = 0, nearest = Infinity;
+      for (const r of data.rows) {
+        if (!isFinite(r[1]) || !isFinite(r[2])) continue;
+        const d = distM(r[2], r[1]);
+        if (d < nearest) nearest = d;
+        if (inBuf(r[2], r[1])) count++;
+      }
+      brandStats.push({ label, count, nearest: isFinite(nearest) ? nearest : null });
+    }
+    surveyData = { elemHits, elemStudents, kinderCount, brandStats };
+    renderSurvey();
+  }
+
+  function renderSurvey() {
+    const d = surveyData; if (!d) return;
+    const list = d.elemHits.slice(0, 15).map(h =>
+      `<div class="sv-item"><span class="sv-n">${h.name}</span>` +
+      `<span class="sv-x">${h.cnt ? h.cnt + '生' : '—'} ・ ${h.dist}m</span></div>`).join('')
+      || '<div class="sv-empty">生活圈內無國小</div>';
+    const brands = d.brandStats.map(b =>
+      `<div class="sv-brand"><span>${b.label}</span>` +
+      `<span>${b.nearest == null ? '—' : b.nearest + 'm'} ・ 圈內 ${b.count}</span></div>`).join('');
+    document.getElementById('surveyBody').innerHTML =
+      `<div class="sv-metrics">` +
+        `<div><span class="num">${d.elemHits.length}</span><span class="lab">圈內國小</span></div>` +
+        `<div><span class="num">${d.elemStudents.toLocaleString()}</span><span class="lab">學生總數</span></div>` +
+        `<div><span class="num">${d.kinderCount}</span><span class="lab">幼兒園</span></div>` +
+      `</div>` +
+      `<div class="sv-sec">生活圈國小（近→遠）</div>` +
+      `<div class="sv-list">${list}</div>` +
+      `<div class="sv-sec">競品（最近距離・圈內數量）</div>` +
+      `<div class="sv-brands">${brands}</div>`;
+  }
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function dropSurveyPin(lngLat) {
+    surveyLngLat = lngLat;
+    if (surveyMarker) surveyMarker.remove();
+    surveyMarker = new maplibregl.Marker({ element: surveyPinElement(), anchor: 'bottom', draggable: true })
+      .setLngLat(lngLat).addTo(map);
+    surveyMarker.on('drag', () => { surveyLngLat = surveyMarker.getLngLat(); updateBuffer(); });
+    surveyMarker.on('dragend', () => { surveyLngLat = surveyMarker.getLngLat(); updateBuffer(); runSurveyAnalysis(); });
+    updateBuffer();
+    runSurveyAnalysis();
+    const nameEl = document.getElementById('surveyName');
+    if (!nameEl.value.trim()) {
+      const t = new Date();
+      nameEl.value = `勘查點-${pad2(t.getHours())}${pad2(t.getMinutes())}`;
+    }
+    document.getElementById('detail').hidden = true; // 避免與鄉鎮詳情面板重疊
+    document.getElementById('survey').hidden = false;
+    document.getElementById('surveyStatus').hidden = true;
+  }
+  map.on('click', ev => { if (placeMode) { dropSurveyPin(ev.lngLat); setPlaceMode(false); } });
+  map.on('contextmenu', ev => { dropSurveyPin(ev.lngLat); });
+
+  document.getElementById('surveyRadius').querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      surveyRadius = +btn.dataset.r;
+      document.querySelectorAll('#surveyRadius button').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      updateBuffer();
+      runSurveyAnalysis();
+    });
+  });
+
+  document.getElementById('surveyClose').addEventListener('click', () => {
+    document.getElementById('survey').hidden = true;
+    if (surveyMarker) { surveyMarker.remove(); surveyMarker = null; }
+    surveyLngLat = null; bufferPoly = null; surveyData = null;
+    if (map.getSource('survey-buf')) map.getSource('survey-buf').setData({ type: 'FeatureCollection', features: [] });
+  });
+
+  // ---- 匯出：Excel（單一勘查點）----
+  function safeFile(s) { return (s || '勘查點').replace(/[\\/:*?"<>|]/g, '_').trim() || '勘查點'; }
+  document.getElementById('surveyExcel').addEventListener('click', () => {
+    if (!surveyData || !surveyLngLat) return;
+    const name = document.getElementById('surveyName').value.trim() || '勘查點';
+    const d = surveyData;
+    const rad = surveyRadius >= 1000 ? (surveyRadius / 1000) + ' km' : surveyRadius + ' m';
+    const rows = [
+      ['勘查點', name],
+      ['緯度', surveyLngLat.lat.toFixed(6)], ['經度', surveyLngLat.lng.toFixed(6)],
+      ['生活圈半徑', rad], [],
+      ['圈內國小數', d.elemHits.length],
+      ['圈內國小學生總數', d.elemStudents],
+      ['圈內幼兒園數', d.kinderCount], [],
+      ['競品品牌', '最近距離(m)', '圈內數量'],
+      ...d.brandStats.map(b => [b.label, b.nearest == null ? '—' : b.nearest, b.count]), [],
+      ['圈內國小', '學生數', '距離(m)'],
+      ...d.elemHits.map(h => [h.name, h.cnt, h.dist]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '勘查摘要');
+    XLSX.writeFile(wb, safeFile(name) + '.xlsx');
+  });
+
+  // ---- 匯出：地圖截圖（PNG）----
+  // NLSC 圖磚為 CORS-clean，canvas 未被污染，toDataURL 可用（已驗證）。
+  // 已於建構時設 preserveDrawingBuffer:true。註：HTML Marker（勘查針）不會出現在 WebGL 截圖中，緩衝圈與熱區會。
+  function flashStatus(msg) {
+    const el = document.getElementById('surveyStatus');
+    el.textContent = msg; el.hidden = false;
+    setTimeout(() => { el.hidden = true; }, 3500);
+  }
+  document.getElementById('surveyShot').addEventListener('click', () => {
+    map.triggerRepaint();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      try {
+        const url = map.getCanvas().toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeFile(document.getElementById('surveyName').value) + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch (e) {
+        console.error('screenshot failed', e);
+        flashStatus('截圖失敗：' + (e && e.name || '未知錯誤'));
+      }
+    }));
+  });
+
+  // ---- 高階主管儀表板（角色切換：營運 / 高階主管）----
+  // 定義（透明可解釋）：學齡＝該鄉鎮 3–12 歲人口。
+  // 拓荒潛力＝學齡人口前 25% 且無自家據點且市場未飽和；
+  // 飽和警戒＝每千名學齡兒童的補教據點數前 15%（學齡人口 ≥800、市場據點 ≥3，去雜訊）。
+  const OWN_BRANDS = [['台灣拓人', tact], ['KUMON', kumon], ['明光義塾', meiko], ['MPM 數學', mpm]]
+    .filter(b => b[1] && b[1].rows);
+  const MKT_DATA = [kumon, meiko, mpm, tact, cram];
+  // 各資料集鄉鎮鍵（cram 縣市/鄉鎮在 r[4]/r[5]，其餘品牌在 r[3]/r[4]）
+  const brandTownKey = (data, r) => data === cram
+    ? normTW((r[4] || '') + (r[5] || '')) : normTW((r[3] || '') + (r[4] || ''));
+  function countByTown(data) {
+    const m = new Map();
+    if (!data || !data.rows) return m;
+    for (const r of data.rows) {
+      if (!isFinite(r[1]) || !isFinite(r[2])) continue;
+      const k = brandTownKey(data, r);
+      if (k) m.set(k, (m.get(k) || 0) + 1);
+    }
+    return m;
+  }
+  // 市場（全補教）每鄉鎮總據點數：與自家品牌無關，先算好
+  const mktByTown = new Map();
+  for (const data of MKT_DATA)
+    for (const [k, v] of countByTown(data)) mktByTown.set(k, (mktByTown.get(k) || 0) + v);
+  // 各品牌每鄉鎮據點數（點選鄉鎮看現況用）
+  const brandCountMaps = [['KUMON', kumon], ['明光義塾', meiko], ['MPM 數學', mpm],
+    ['台灣拓人', tact], ['補習班', cram]].map(([label, data]) => [label, countByTown(data)]);
+  const schoolAgeOf = code => { const t = pop.towns[code]; return t ? sumBand(t.ages, 3, 12) : 0; };
+
+  // ---- 近五年人口成長（pop_growth.json；缺檔則整段功能靜默關閉） ----
+  const growthByCode = new Map();
+  if (growth) for (const r of growth.townAll) growthByCode.set(r.code, r);
+  const fmtPct = v => v == null ? '—' : (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
+  const periodLabel = p => `${p.slice(0, 3)}/${p.slice(3)}`;
+  // 迷你走勢線：6 期一條，純視覺輔助，數字仍以文字列出
+  function sparkline(series, w = 64, h = 24) {
+    const vals = series.filter(v => v != null);
+    if (vals.length < 2) return '';
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+    const pts = series.map((v, i) => v == null ? null :
+      [(i / (series.length - 1)) * (w - 2) + 1, h - 1 - ((v - lo) / span) * (h - 2)])
+      .filter(Boolean);
+    const up = vals[vals.length - 1] >= vals[0];
+    const col = up ? '#2f7a51' : '#b3453a';
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">` +
+      `<polyline points="${pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ')}" ` +
+      `fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/>` +
+      `<circle cx="${pts[pts.length - 1][0].toFixed(1)}" cy="${pts[pts.length - 1][1].toFixed(1)}" r="2.2" fill="${col}"/></svg>`;
+  }
+
+  // 點鄉鎮時，把該區各品牌據點畫在地圖上：label, 資料, 顏色, 縣市欄, 鄉鎮欄, 疊放優先（越大越上層）
+  // 補習班(cram)數量最多墊最底；KUMON 顏色最淡疊最上，才不會被其他點蓋掉
+  const COMP_BRANDS = [
+    ['補習班', cram, '#5aa23a', 4, 5, 0],
+    ['台灣拓人', tact, '#dc2626', 3, 4, 1],
+    ['MPM 數學', mpm, '#14b8a6', 3, 4, 2],
+    ['明光義塾', meiko, '#cb5cf0', 3, 4, 3],
+    ['KUMON', kumon, '#7DCDF4', 3, 4, 4],
+  ];
+  function showExecCompetitors(townKey) {
+    const feats = [];
+    for (const [label, data, color, ci, ti, pri] of COMP_BRANDS) {
+      if (!data || !data.rows) continue;
+      for (const r of data.rows) {
+        if (!isFinite(r[1]) || !isFinite(r[2])) continue;
+        if (normTW((r[ci] || '') + (r[ti] || '')) !== townKey) continue;
+        feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [r[2], r[1]] },
+          properties: { n: r[0], brand: label, color, pri } });
+      }
+    }
+    if (map.getSource('exec-comp')) map.getSource('exec-comp').setData({ type: 'FeatureCollection', features: feats });
+    if (map.getLayer('exec-comp-dots')) map.setLayoutProperty('exec-comp-dots', 'visibility', 'visible');
+  }
+  function clearExecCompetitors() {
+    if (map.getSource('exec-comp')) map.getSource('exec-comp').setData({ type: 'FeatureCollection', features: [] });
+    if (map.getLayer('exec-comp-dots')) map.setLayoutProperty('exec-comp-dots', 'visibility', 'none');
+  }
+
+  function currentOwnData() {
+    const v = document.getElementById('execBrand').value;
+    const found = OWN_BRANDS.find(b => b[0] === v);
+    return found ? found[1] : (OWN_BRANDS[0] && OWN_BRANDS[0][1]);
+  }
+
+  function computeExec(ownData, county) {
+    execScopeCounty = county || '';
+    const ownByTown = countByTown(ownData);
+    const rows = towns.map(f => {
+      const code = f.properties.TOWNCODE;
+      const nm = normTW(f.properties.COUNTYNAME + f.properties.TOWNNAME);
+      const schoolAge = schoolAgeOf(code);
+      const own = ownByTown.get(nm) || 0;
+      const mkt = mktByTown.get(nm) || 0;
+      const density = schoolAge > 0 ? mkt / (schoolAge / 1000) : 0; // 每千學齡兒童補教據點數
+      return { code, county: f.properties.COUNTYNAME, name: f.properties.COUNTYNAME + f.properties.TOWNNAME, schoolAge, own, mkt, density };
+    });
+    // 門檻用全台（不隨縣市縮放），拓荒/飽和才有全國比較意義；角色著色也維持全台
+    const ages = rows.map(r => r.schoolAge).filter(v => v > 0).sort(d3.ascending);
+    const p75 = d3.quantile(ages, 0.75) || 0;
+    const densVals = rows.filter(r => r.schoolAge >= 800).map(r => r.density).filter(v => v > 0).sort(d3.ascending);
+    const dP85 = d3.quantile(densVals, 0.85);
+    execRole = new Map(); execRowByCode = new Map();
+    for (const r of rows) {
+      execRowByCode.set(r.code, { schoolAge: r.schoolAge, own: r.own, mkt: r.mkt });
+      const isPot = r.own === 0 && r.schoolAge >= p75 && (dP85 == null || r.density < dP85);
+      const isSat = r.schoolAge >= 800 && r.mkt >= 3 && dP85 != null && r.density >= dP85;
+      execRole.set(r.code, isPot ? 1 : isSat ? -1 : 0);
+    }
+    // 面板數字（KPI／Top 榜）依所選縣市縮放，未選＝全台
+    const scoped = county ? rows.filter(r => r.county === county) : rows;
+    const potential = scoped.filter(r => execRole.get(r.code) === 1).sort((a, b) => b.schoolAge - a.schoolAge);
+    const saturation = scoped.filter(r => execRole.get(r.code) === -1).sort((a, b) => b.density - a.density);
+    const ownTotal = scoped.reduce((s, r) => s + r.own, 0);
+    const coverTowns = scoped.filter(r => r.own > 0).length;
+    execResult = { scope: county || '全台', potential, saturation, ownTotal, coverTowns,
+      totalTowns: scoped.length, potCount: potential.length, satCount: saturation.length };
+    return execResult;
+  }
+
+  const execColorExpr = ['case',
+    ['==', ['coalesce', ['feature-state', 'role'], 0], 1], '#3a8c5f',
+    ['==', ['coalesce', ['feature-state', 'role'], 0], -1], '#c0483a',
+    '#c7d0d8'];
+  function applyExecColors() {
+    if (!map.getLayer('towns-fill')) return;
+    for (const [code, role] of execRole) map.setFeatureState({ source: 'towns', id: code }, { role });
+    map.setPaintProperty('towns-fill', 'fill-color', execColorExpr);
+    map.setPaintProperty('towns-fill', 'fill-opacity', 0.62);
+  }
+
+  function renderExecPanel() {
+    const r = execResult; if (!r) return;
+    const li = arr => arr.slice(0, 5).map((x, i) =>
+      `<li data-code="${x.code}"><span class="rk">${i + 1}</span>` +
+      `<span class="place">${x.name}</span>` +
+      `<span class="why">學齡 ${fmtCount(x.schoolAge)}・補教 ${x.mkt}</span></li>`).join('')
+      || '<li class="ex-empty">—</li>';
+    const top = r.potential[0];
+    const insight = top
+      ? `洞察：<b>${top.name}</b> 學齡兒童 ${fmtCount(top.schoolAge)} 人（全台前段），目前無自家據點、周邊補教 ${top.mkt} 家，建議優先評估。`
+      : '此範圍目前沒有明顯的拓荒潛力區。';
+    document.getElementById('execBody').innerHTML =
+      `<div class="ex-scope">範圍：${r.scope}</div>` +
+      `<div class="ex-kpis">` +
+        `<div class="ex-kpi"><span class="n">${r.ownTotal}</span><span class="k">教室總數</span></div>` +
+        `<div class="ex-kpi"><span class="n">${r.coverTowns}</span><span class="k">覆蓋鄉鎮 / ${r.totalTowns}</span></div>` +
+        `<div class="ex-kpi good"><span class="n">${r.potCount}</span><span class="k">拓荒潛力區</span></div>` +
+        `<div class="ex-kpi crit"><span class="n">${r.satCount}</span><span class="k">飽和警戒區</span></div>` +
+      `</div>` +
+      `<div class="ex-sec"><i class="ex-dot g"></i>拓荒潛力 Top 5</div>` +
+      `<ol class="ex-list">${li(r.potential)}</ol>` +
+      `<div class="ex-sec"><i class="ex-dot c"></i>飽和警戒 Top 5</div>` +
+      `<ol class="ex-list">${li(r.saturation)}</ol>` +
+      `<div class="ex-insight">${insight}</div>` +
+      `<p class="ex-formula">學齡＝3–12 歲人口。拓荒＝學齡人口前 25% 且無自家據點；飽和＝每千名學齡兒童補教據點數前 15%。自家品牌可於右上切換。</p>` +
+      growthSectionHTML();
+  }
+
+  // ---- 近五年人口成長：面板只放摘要，完整榜單在 growth.html 簡報頁 ----
+  function growthSectionHTML() {
+    if (!growth) return '';
+    const n = growth.national;
+    return `<div class="ex-sec ex-sec-top"><i class="ex-dot up"></i>近五年人口成長</div>` +
+      `<div class="ex-gsum">全台總人口 <b class="${n.growth >= 0 ? 'up' : 'dn'}">${fmtPct(n.growth)}</b>` +
+      `・學齡 3–12 <b class="${n.sGrowth >= 0 ? 'up' : 'dn'}">${fmtPct(n.sGrowth)}</b>` +
+      `（${periodLabel(growth.basePeriod)} → ${periodLabel(growth.lastPeriod)}）</div>` +
+      `<a class="ex-deck" href="growth.html" target="_blank" rel="noopener">開啟成長簡報 ↗</a>` +
+      `<p class="ex-formula">鄉鎮與村里成長排行、假成長區警訊、村里熱點都在簡報頁，點鄉鎮仍可在下方卡片看該區走勢。</p>`;
+  }
+
+  // 點選鄉鎮 → 現況卡片
+  function selectExecTown(code, keepView) {
+    const f = towns.find(t => t.properties.TOWNCODE === code);
+    if (!f) return;
+    const county = f.properties.COUNTYNAME;
+    if (execScopeCounty !== county) { // 概況縮放到該區所屬縣市
+      computeExec(currentOwnData(), county);
+      renderExecPanel();
+    }
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], code]);
+    // keepView：由村里榜單進來時已縮到該里，不要再被鄉鎮範圍蓋回去
+    if (!keepView) map.fitBounds(bboxOf([f]), { padding: 80, maxZoom: 11.5, duration: 650 });
+    renderExecDetail(code, f);
+    showExecCompetitors(normTW(f.properties.COUNTYNAME + f.properties.TOWNNAME));
+    document.getElementById('execDetail').hidden = false;
+    syncExecDrill(county, code);
+  }
+  function renderExecDetail(code, f) {
+    const nm = normTW(f.properties.COUNTYNAME + f.properties.TOWNNAME);
+    const r = execRowByCode.get(code) || { schoolAge: schoolAgeOf(code), own: 0, mkt: 0 };
+    const role = execRole.get(code);
+    const badge = role === 1 ? '<span class="ex-badge g">拓荒潛力</span>'
+      : role === -1 ? '<span class="ex-badge c">飽和警戒</span>' : '<span class="ex-badge n">一般</span>';
+    const t = pop.towns[code], iv = income.towns[code];
+    const density = r.schoolAge > 0 ? r.mkt / (r.schoolAge / 1000) : 0;
+    const brands = brandCountMaps.map(([label, m]) => `${label} ${m.get(nm) || 0}`).join('　');
+    document.getElementById('execDetailBody').innerHTML =
+      `<div class="exd-head"><span class="exd-name">${f.properties.COUNTYNAME}${f.properties.TOWNNAME}</span>${badge}</div>` +
+      `<div class="exd-stats">` +
+        `<div><span class="n">${t ? fmtCount(t.total) : '—'}</span><span class="k">總人口</span></div>` +
+        `<div><span class="n">${fmtCount(r.schoolAge)}</span><span class="k">學齡兒童 3–12</span></div>` +
+        `<div><span class="n">${iv ? fmtIncome(iv[2]) : '—'}</span><span class="k">所得中位數</span></div>` +
+      `</div>` +
+      `<div class="exd-stats">` +
+        `<div><span class="n">${r.own}</span><span class="k">自家據點</span></div>` +
+        `<div><span class="n">${r.mkt}</span><span class="k">市場補教</span></div>` +
+        `<div><span class="n">${density.toFixed(1)}</span><span class="k">每千學齡</span></div>` +
+      `</div>` +
+      `<div class="exd-sec">各品牌據點數</div>` +
+      `<div class="exd-brands">${brands}</div>` +
+      execDetailGrowthHTML(code);
+  }
+
+  // 現況卡片的「近五年人口變化」：總人口與學齡各一列，附 6 期走勢線
+  function execDetailGrowthHTML(code) {
+    const r = growthByCode.get(code);
+    if (!r) return '';
+    const row = (lab, pct, base, last, hist) =>
+      `<div class="exd-gw"><span class="lab">${lab}</span>` +
+      `<span class="pct ${pct >= 0 ? 'up' : 'dn'}">${fmtPct(pct)}</span>` +
+      `<span class="num">${fmtCount(base)}→${fmtCount(last)}</span>` +
+      sparkline(hist) + `</div>`;
+    const n = growth.national;
+    return `<div class="exd-sec">近五年人口變化（${periodLabel(growth.basePeriod)} → ${periodLabel(growth.lastPeriod)}）</div>` +
+      row('總人口', r.growth, r.base, r.last, r.hist) +
+      row('學齡 3–12', r.sGrowth, r.sBase, r.sLast, r.sHist) +
+      `<p class="exd-note">全台同期：總人口 ${fmtPct(n.growth)}、學齡 ${fmtPct(n.sGrowth)}</p>`;
+  }
+
+  function hidePointLayers() {
+    for (const id of ['schools-elem', 'schools-kinder', 'cram-dots', 'kumon-dots', 'meiko-dots',
+      'mpm-dots', 'tact-dots', 'pins-sym', 'survey-buf-fill', 'survey-buf-line', 'exec-comp-dots'])
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+  }
+  function restorePointVisibility() {
+    updateSchoolFilters();
+    for (const [id, chk] of [['cram-dots', 'layerCram'], ['kumon-dots', 'layerKumon'],
+      ['meiko-dots', 'layerMeiko'], ['mpm-dots', 'layerMpm'], ['tact-dots', 'layerTact']])
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', document.getElementById(chk).checked ? 'visible' : 'none');
+    for (const id of ['survey-buf-fill', 'survey-buf-line', 'pins-sym'])
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
+  }
+
+  function enterExec() {
+    document.getElementById('detail').hidden = true;
+    document.getElementById('survey').hidden = true;
+    if (placeMode) setPlaceMode(false);
+    if (surveyMarker) { // 清掉未關閉的勘查點，主管視角只看全台著色
+      surveyMarker.remove(); surveyMarker = null; surveyLngLat = null; bufferPoly = null; surveyData = null;
+      if (map.getSource('survey-buf')) map.getSource('survey-buf').setData({ type: 'FeatureCollection', features: [] });
+    }
+    clearPins();
+    clearWhiteSpace();
+    hidePointLayers();
+    computeExec(currentOwnData());
+    applyExecColors();
+    renderExecPanel();
+    document.getElementById('execPanel').hidden = false;
+    document.getElementById('execLegend').hidden = false;
+    document.getElementById('execDetail').hidden = true;
+    document.getElementById('execCounty').value = '';
+    document.getElementById('execTown').innerHTML = '<option value="">選鄉鎮市區…</option>';
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], '']);
+    map.fitBounds(TAIWAN_BOUNDS, { padding: 40, duration: 600 });
+  }
+  function exitExec() {
+    document.getElementById('execPanel').hidden = true;
+    document.getElementById('execLegend').hidden = true;
+    document.getElementById('execDetail').hidden = true;
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], '']);
+    clearExecCompetitors();
+    restorePointVisibility();
+    map.setPaintProperty('towns-fill', 'fill-opacity', fillOpacity());
+    repaint();
+  }
+  function setRoleMode(mode) {
+    if (mode === roleMode) return;
+    roleMode = mode;
+    document.body.classList.toggle('exec-mode', mode === 'exec');
+    document.querySelectorAll('#roleSwitch button').forEach(b => b.classList.toggle('active', b.dataset.role === mode));
+    if (mode === 'exec') enterExec(); else exitExec();
+  }
+  document.querySelectorAll('#roleSwitch button').forEach(b =>
+    b.addEventListener('click', () => setRoleMode(b.dataset.role)));
+
+  // 自家品牌下拉（cram 為泛稱補習班，不列為自家）
+  const execBrandSel = document.getElementById('execBrand');
+  OWN_BRANDS.forEach(([label]) => {
+    const o = document.createElement('option'); o.value = label; o.textContent = label;
+    execBrandSel.appendChild(o);
+  });
+  execBrandSel.addEventListener('change', () => {
+    document.getElementById('execDetail').hidden = true;
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], '']);
+    clearExecCompetitors();
+    computeExec(currentOwnData(), execScopeCounty);
+    applyExecColors();
+    renderExecPanel();
+  });
+
+  // exec 縣市 → 鄉鎮市區 下鑽選單
+  const execCountySel = document.getElementById('execCounty');
+  const execTownSel = document.getElementById('execTown');
+  counties.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; execCountySel.appendChild(o); });
+  function populateExecTowns(county) {
+    const tSel = document.getElementById('execTown');
+    tSel.innerHTML = '<option value="">選鄉鎮市區…</option>';
+    if (!county) return [];
+    const fs = towns.filter(f => f.properties.COUNTYNAME === county)
+      .sort((a, b) => a.properties.TOWNCODE.localeCompare(b.properties.TOWNCODE));
+    for (const f of fs) {
+      const o = document.createElement('option');
+      o.value = f.properties.TOWNCODE; o.textContent = f.properties.TOWNNAME;
+      tSel.appendChild(o);
+    }
+    return fs;
+  }
+  // 點地圖或 Top 榜下鑽時，把下拉同步到目前的縣市/鄉鎮（不觸發 change）
+  function syncExecDrill(county, code) {
+    const cSel = document.getElementById('execCounty');
+    if (cSel.value !== county) { cSel.value = county; populateExecTowns(county); }
+    document.getElementById('execTown').value = code || '';
+  }
+  execCountySel.addEventListener('change', () => {
+    const county = execCountySel.value;
+    const fs = populateExecTowns(county);
+    document.getElementById('execDetail').hidden = true;
+    clearExecCompetitors();
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], '']);
+    computeExec(currentOwnData(), county); // 概況縮放到該縣市（未選＝全台）
+    renderExecPanel();
+    if (county && fs.length) map.fitBounds(bboxOf(fs), { padding: 60, maxZoom: 11.5, duration: 650 });
+    else map.fitBounds(TAIWAN_BOUNDS, { padding: 40, duration: 600 });
+  });
+  execTownSel.addEventListener('change', () => {
+    if (execTownSel.value) selectExecTown(execTownSel.value);
+  });
+  // 點 Top 榜清單 → 飛到該鄉鎮並開現況卡片
+  document.getElementById('execBody').addEventListener('click', e => {
+    const li = e.target.closest('li[data-code]');
+    if (li) selectExecTown(li.dataset.code);
+  });
+  document.getElementById('execDetailClose').addEventListener('click', () => {
+    document.getElementById('execDetail').hidden = true;
+    map.setFilter('towns-sel', ['==', ['get', 'TOWNCODE'], '']);
+    clearExecCompetitors();
+  });
 })();

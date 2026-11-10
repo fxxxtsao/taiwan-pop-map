@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全台 368 鄉鎮市區近五年人口結構與消長趨勢分析簡報 (11012–11509)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: rgba(24, 24, 27, 0.9);
+      --border: rgba(255, 255, 255, 0.14);
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --accent-amber: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      font-size: 18px;
+    }
+    .deck-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    .slide {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: scale(0.985);
+      display: flex;
+      flex-direction: column;
+      padding: 2.2rem 3.5rem 4.8rem 3.5rem;
+      background: radial-gradient(circle at 20% 15%, #18181b 0%, #09090b 85%);
+    }
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+      z-index: 10;
+    }
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 1.4rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 1rem;
+      flex-shrink: 0;
+    }
+    .slide-tag {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-weight: 800;
+      padding: 0.3rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: inline-block;
+      margin-bottom: 0.45rem;
+    }
+    .slide-title {
+      font-size: 2.35rem;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+    .slide-subtitle {
+      font-size: 1.15rem;
+      color: #d4d4d8;
+      font-weight: 500;
+    }
+    .slide-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.75rem; height: 100%; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.4rem; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1.1rem;
+      padding: 1.5rem 1.75rem;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .card-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 5px solid var(--accent-amber);
+      padding-left: 0.85rem;
+      flex-shrink: 0;
+    }
+    .kpi-value {
+      font-size: 2.8rem;
+      font-weight: 900;
+      line-height: 1.15;
+      margin: 0.45rem 0;
+    }
+    .kpi-label { font-size: 1.1rem; color: var(--text-muted); font-weight: 600; }
+    .kpi-sub { font-size: 1rem; margin-top: 0.4rem; color: #e4e4e7; font-weight: 500; }
+
+    .pos { color: #34d399 !important; }
+    .neg { color: #fb7185 !important; }
+    .warn { color: #fbbf24 !important; }
+    .info { color: #38bdf8 !important; }
+
+    .badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      display: inline-block;
+    }
+    .badge-pos { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.45); }
+    .badge-neg { background: rgba(244, 63, 94, 0.2); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.45); }
+    .badge-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.45); }
+    .badge-info { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.45); }
+
+    .table-wrap {
+      overflow-y: auto;
+      flex: 1;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1.18rem;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #18181b;
+      color: #e4e4e7;
+      font-weight: 800;
+      text-align: right;
+      padding: 0.85rem 1rem;
+      border-bottom: 2px solid rgba(255,255,255,0.18);
+      z-index: 2;
+      white-space: nowrap;
+      font-size: 1.12rem;
+    }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+    td {
+      padding: 0.78rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      text-align: right;
+      white-space: nowrap;
+    }
+    tr:hover td { background: rgba(255,255,255,0.05); }
+
+    .cover-center {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .cover-title {
+      font-size: 3.8rem;
+      font-weight: 900;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #ffffff 0%, #fbbf24 55%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 1rem 0 1.4rem 0;
+    }
+    .cover-desc {
+      font-size: 1.4rem;
+      color: #e4e4e7;
+      line-height: 1.7;
+      max-width: 1050px;
+      margin-bottom: 2.5rem;
+    }
+
+    .nav-bar {
+      position: fixed;
+      bottom: 0.9rem;
+      left: 3.5rem;
+      right: 3.5rem;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(18, 18, 21, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 0.6rem 1.5rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .nav-dots { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+    .nav-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: #d4d4d8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .nav-dot:hover { border-color: #f59e0b; color: #fff; }
+    .nav-dot.active {
+      background: #f59e0b;
+      color: #000;
+      border-color: #f59e0b;
+      transform: scale(1.12);
+    }
+    .nav-btns { display: flex; gap: 0.75rem; align-items: center; }
+    .btn {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 0.48rem 1.2rem;
+      border-radius: 9999px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #f59e0b; color: #000; border-color: #f59e0b; }
+
+    .filter-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .input-ctrl, .select-ctrl {
+      background: #18181b;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 0.6rem 1rem;
+      border-radius: 0.6rem;
+      font-size: 1.05rem;
+      font-weight: 500;
+      outline: none;
+    }
+    .input-ctrl:focus, .select-ctrl:focus { border-color: #f59e0b; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #f59e0b; }
+
+    .insight-list { list-style: none; display: flex; flex-direction: column; gap: 1.15rem; }
+    .insight-list li {
+      background: rgba(255,255,255,0.04);
+      border-left: 5px solid var(--accent-amber);
+      padding: 1.1rem 1.4rem;
+      border-radius: 0 0.75rem 0.75rem 0;
+      font-size: 1.22rem;
+      line-height: 1.65;
+    }
+    .quad-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 1rem;
+      padding: 1.4rem 1.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .quad-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .quad-desc {
+      font-size: 1.12rem;
+      line-height: 1.6;
+      color: #e4e4e7;
+    }
+  </style>
+</head>
+<body>
+
+<div class="deck-container">
+
+  <!-- SLIDE 1: COVER -->
+  <section class="slide active">
+    <div class="cover-center">
+      <span class="slide-tag">TAIWAN DEMOGRAPHIC INTELLIGENCE 2021–2026</span>
+      <h1 class="cover-title">全台 368 鄉鎮市區近五年<br>人口結構與消長趨勢分析簡報</h1>
+      <p class="cover-desc">
+        整合內政部戶政司 <strong>110年12月至115年9月（2021–2026）</strong> 全台 368 鄉鎮市區、7,752 村里單一年齡人口時間序列，疊加財政部綜稅所得統計，深度剖析<strong>總人口遷移、0–12歲學齡少子化衝擊、超高齡化結構轉折與黃金成長熱區</strong>。
+      </p>
+      <div class="grid-4" style="width: 100%; height: auto;">
+        <div class="card">
+          <div class="kpi-label">分析涵蓋行政區</div>
+          <div class="kpi-value info">368 <span style="font-size:1.3rem;font-weight:600;">鄉鎮市區</span></div>
+          <div class="kpi-sub">下鑽 7,752 村里 × 101 單齡</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">最新全台總人口 (11509)</div>
+          <div class="kpi-value">2,321.3 <span style="font-size:1.3rem;font-weight:600;">萬人</span></div>
+          <div class="kpi-sub"><span class="neg">▼ 16.2 萬人 (-0.69%)</span> vs 11012</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">3–12歲核心學齡人口</div>
+          <div class="kpi-value neg">181.8 <span style="font-size:1.3rem;font-weight:600;">萬人</span></div>
+          <div class="kpi-sub"><span class="neg">▼ 18.3 萬人 (-9.12%)</span>｜0–5歲 -25.5%</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">65歲以上高齡人口占比</div>
+          <div class="kpi-value warn">20.70%</div>
+          <div class="kpi-sub"><span class="warn">▲ 86.7 萬人 (+22.0%)</span>｜邁入超高齡</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: EXECUTIVE SUMMARY I (REGIONAL POLARIZATION) -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">EXECUTIVE SUMMARY (1/2)</span>
+        <h2 class="slide-title">核心洞察一：區域極端分化 — 23% 集中成長 vs 77% 人口流失</h2>
+      </div>
+      <div class="slide-subtitle">資料期間：民國 110 年 12 月 → 115 年 9 月（跨距 4.75 年）</div>
+    </div>
+    <div class="slide-body">
+      <div class="card" style="justify-content: space-between;">
+        <ul class="insight-list">
+          <li>
+            <strong style="color:#fbbf24; font-size:1.35rem;">1. 全台「二八分化」定型：76.6% 鄉鎮陷入人口淨流失</strong><br>
+            全台總人口由 2,337.5 萬降至 2,321.3 萬人（累計減少 16.2 萬人，-0.69%）。在 368 個鄉鎮市區中，僅 <strong>86 區（23.4%）</strong> 總人口正成長，高達 <strong>282 區（76.6%）</strong> 人口萎縮。
+          </li>
+          <li>
+            <strong style="color:#34d399; font-size:1.35rem;">2. 科技走廊與重劃區強勢吸納：桃、中、新北、竹縣四大引擎</strong><br>
+            人口移入高度集中於 <strong>桃園市（+8.62 萬人，+3.79%）</strong>、<strong>臺中市（+5.29 萬人，+1.88%）</strong>、<strong>新北市（+2.65 萬人，+0.66%）</strong> 與 <strong>新竹縣（+2.26 萬人，+3.93%）</strong> 的大型新市鎮、高鐵／機捷特區與科學園區生活圈。
+          </li>
+          <li>
+            <strong style="color:#fb7185; font-size:1.35rem;">3. 首都圈「脫北潮」與傳統農業大縣流失加劇</strong><br>
+            <strong>臺北市</strong>五年淨流失 <strong>10.55 萬人（-4.18%）</strong> 居全國之冠，士林、大安、內湖、北投單區皆減少超過 1 萬人；非六都則以 <strong>彰化縣（-5.49 萬人，-4.37%）</strong>、<strong>屏東縣（-2.72 萬人）</strong>、<strong>嘉義縣（-2.43 萬人，-4.93%）</strong> 流失最劇。
+          </li>
+        </ul>
+        <div class="grid-3" style="margin-top: 1.5rem;">
+          <div style="background:rgba(16,185,129,0.12); border:2px solid rgba(16,185,129,0.4); padding:1.3rem; border-radius:0.9rem; text-align:center;">
+            <div style="font-size:1.15rem; color:#d4d4d8; font-weight:600;">總人口「正成長」鄉鎮市區</div>
+            <div style="font-size:2.6rem; font-weight:900; color:#34d399; margin-top:0.3rem;">86 區 <span style="font-size:1.4rem;">(23.4%)</span></div>
+          </div>
+          <div style="background:rgba(244,63,94,0.12); border:2px solid rgba(244,63,94,0.4); padding:1.3rem; border-radius:0.9rem; text-align:center;">
+            <div style="font-size:1.15rem; color:#d4d4d8; font-weight:600;">總人口「淨流失」鄉鎮市區</div>
+            <div style="font-size:2.6rem; font-weight:900; color:#fb7185; margin-top:0.3rem;">282 區 <span style="font-size:1.4rem;">(76.6%)</span></div>
+          </div>
+          <div style="background:rgba(245,158,11,0.12); border:2px solid rgba(245,158,11,0.4); padding:1.3rem; border-radius:0.9rem; text-align:center;">
+            <div style="font-size:1.15rem; color:#d4d4d8; font-weight:600;">3–12歲學齡「正成長」鄉鎮</div>
+            <div style="font-size:2.6rem; font-weight:900; color:#fbbf24; margin-top:0.3rem;">僅 29 區 <span style="font-size:1.4rem;">(7.9%)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: EXECUTIVE SUMMARY II (AGE STRUCTURE SHIFT) -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">EXECUTIVE SUMMARY (2/2)</span>
+        <h2 class="slide-title">核心洞察二：少子化海嘯衝擊學齡 × 正式邁入超高齡社會</h2>
+      </div>
+      <div class="slide-subtitle">0–5 歲幼兒五年暴跌 25.5%，65 歲以上高齡人口突破 20.7%</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="card-title">全台各年齡層近五年結構消長對照 (11012 vs 11509)</div>
+        <div class="table-wrap" style="flex:none; margin-bottom:1.5rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>年齡層區間</th>
+                <th>代表客群意義</th>
+                <th>11012 人數 (2021底)</th>
+                <th>11509 人數 (2026/09)</th>
+                <th>近五年淨增減</th>
+                <th>近五年變化幅度</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>0–5 歲</strong></td>
+                <td>學齡前幼兒（托嬰／幼兒園）</td>
+                <td>1,073,976 人</td>
+                <td><strong>799,761 人</strong></td>
+                <td class="neg"><strong>-274,215 人</strong></td>
+                <td><span class="badge badge-neg">-25.53% (重挫1/4)</span></td>
+              </tr>
+              <tr>
+                <td><strong>6–11 歲</strong></td>
+                <td>國小學齡兒童（112底達127.1萬峰值後反轉）</td>
+                <td>1,221,953 人</td>
+                <td><strong>1,163,946 人</strong></td>
+                <td class="neg"><strong>-58,007 人</strong></td>
+                <td><span class="badge badge-neg">-4.75% (進入下行)</span></td>
+              </tr>
+              <tr style="background:rgba(244,63,94,0.07);">
+                <td><strong>3–12 歲</strong></td>
+                <td><strong>核心教育與才藝培訓客群</strong></td>
+                <td>2,000,589 人</td>
+                <td><strong>1,818,052 人</strong></td>
+                <td class="neg"><strong>-182,537 人</strong></td>
+                <td><span class="badge badge-neg">-9.12%</span></td>
+              </tr>
+              <tr>
+                <td><strong>12–17 歲</strong></td>
+                <td>國中／高中職青少年</td>
+                <td>1,221,771 人</td>
+                <td><strong>1,204,349 人</strong></td>
+                <td class="neg">-17,422 人</td>
+                <td><span class="badge badge-info">-1.43% (短期持平)</span></td>
+              </tr>
+              <tr>
+                <td><strong>18–64 歲</strong></td>
+                <td>青壯年工作與消費主力人口</td>
+                <td>15,918,581 人</td>
+                <td><strong>15,239,142 人</strong></td>
+                <td class="neg"><strong>-679,439 人</strong></td>
+                <td><span class="badge badge-neg">-4.27%</span></td>
+              </tr>
+              <tr style="background:rgba(245,158,11,0.08);">
+                <td><strong>65 歲以上</strong></td>
+                <td><strong>高齡退休與長照醫療客群</strong></td>
+                <td>3,939,033 人 (16.85%)</td>
+                <td><strong>4,806,053 人 (20.70%)</strong></td>
+                <td class="pos"><strong>+867,020 人</strong></td>
+                <td><span class="badge badge-warn">+22.01% (激增86.7萬)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="background:rgba(245,158,11,0.12); border-left:5px solid #f59e0b; padding:1rem 1.4rem; border-radius:0.5rem; font-size:1.15rem; line-height:1.6;">
+          <strong class="warn">戰略預警：未來 3–5 年國小生源將迎來 -20% 級別的結構性縮減</strong><br>
+          目前 6–11 歲國小生僅減少 4.75%，是因為過去 104–108 年出生世代仍在校；但隨著 <strong>0–5 歲幼兒五年大減 27.4 萬人（-25.53%）</strong>，這批幼兒將於 2026–2030 年陸續入學，除少數新興重劃區外，傳統選址將面臨嚴峻生源考驗。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: NATIONAL 6-PERIOD SERIES -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">MACRO TIME SERIES</span>
+        <h2 class="slide-title">全台近五年各期別人口與年齡結構演變 (11012–11509)</h2>
+      </div>
+      <div class="slide-subtitle">老化指數由 136.3 飆升至 184.4｜超高齡鄉鎮（65+ ≥ 20%）由 138 區增至 260 區</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="card-title">歷年全國各年齡層人口完整時間序列</div>
+        <div class="table-wrap" style="flex:none; margin-bottom:1.4rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>統計期別</th>
+                <th>全台總人口</th>
+                <th>0–5歲 (幼兒)</th>
+                <th>6–11歲 (國小)</th>
+                <th>3–12歲 (學齡核心)</th>
+                <th>18–64歲 (青壯年)</th>
+                <th>65歲以上 (高齡)</th>
+                <th>0–11歲占比</th>
+                <th>65歲+占比</th>
+                <th>老化指數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>11012 (2021底)</strong></td>
+                <td>23,375,314</td>
+                <td>1,073,976</td>
+                <td>1,221,953</td>
+                <td>2,000,589</td>
+                <td>15,918,581</td>
+                <td>3,939,033</td>
+                <td>9.82%</td>
+                <td>16.85%</td>
+                <td>136.3</td>
+              </tr>
+              <tr>
+                <td><strong>11112 (2022底)</strong></td>
+                <td>23,264,640</td>
+                <td>1,006,790</td>
+                <td>1,257,417</td>
+                <td>1,976,755</td>
+                <td>15,746,674</td>
+                <td>4,085,793</td>
+                <td>9.73%</td>
+                <td>17.56%</td>
+                <td>144.9</td>
+              </tr>
+              <tr>
+                <td><strong>11212 (2023底)</strong></td>
+                <td class="info"><strong>23,420,442 (疫後復籍)</strong></td>
+                <td>958,734</td>
+                <td class="warn"><strong>1,270,945 (高點)</strong></td>
+                <td>1,998,415</td>
+                <td>15,719,260</td>
+                <td>4,296,985</td>
+                <td>9.52%</td>
+                <td>18.35%</td>
+                <td>153.8</td>
+              </tr>
+              <tr>
+                <td><strong>11312 (2024底)</strong></td>
+                <td>23,400,220</td>
+                <td>915,634</td>
+                <td>1,220,066</td>
+                <td>1,962,346</td>
+                <td>15,569,128</td>
+                <td>4,488,707</td>
+                <td>9.13%</td>
+                <td>19.18%</td>
+                <td>163.7</td>
+              </tr>
+              <tr>
+                <td><strong>11412 (2025底)</strong></td>
+                <td>23,299,132</td>
+                <td>849,120</td>
+                <td>1,199,046</td>
+                <td>1,863,631</td>
+                <td>15,382,513</td>
+                <td>4,673,155</td>
+                <td>8.79%</td>
+                <td class="warn"><strong>20.06% (破20%)</strong></td>
+                <td>174.2</td>
+              </tr>
+              <tr style="background:rgba(245,158,11,0.1);">
+                <td><strong>11509 (2026/09)</strong></td>
+                <td><strong>23,213,251</strong></td>
+                <td class="neg"><strong>799,761</strong></td>
+                <td class="neg"><strong>1,163,946</strong></td>
+                <td class="neg"><strong>1,818,052</strong></td>
+                <td><strong>15,239,142</strong></td>
+                <td class="warn"><strong>4,806,053</strong></td>
+                <td class="neg"><strong>8.46%</strong></td>
+                <td class="warn"><strong>20.70%</strong></td>
+                <td class="warn"><strong>184.4</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid-3">
+          <div style="background:rgba(255,255,255,0.03); padding:1rem 1.25rem; border-radius:0.75rem; border:1px solid rgba(255,255,255,0.1);">
+            <strong class="info" style="font-size:1.15rem;">112年底疫後復籍拐點</strong>
+            <p style="font-size:1.02rem; color:#d4d4d8; margin-top:0.35rem; line-height:1.5;">111年因出境逾2年除籍降至2,326萬，112年國境解封復籍衝上2,342萬；113年起回歸自然減少趨勢，每年淨減約10萬人。</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); padding:1rem 1.25rem; border-radius:0.75rem; border:1px solid rgba(255,255,255,0.1);">
+            <strong class="neg" style="font-size:1.15rem;">113年起國小人數正式下行</strong>
+            <p style="font-size:1.02rem; color:#d4d4d8; margin-top:0.35rem; line-height:1.5;">6–11歲於 11212 達到 127.1 萬峰值後，113–115 年短短兩年半已減少 10.7 萬名國小生，且跌勢正在加速。</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); padding:1rem 1.25rem; border-radius:0.75rem; border:1px solid rgba(255,255,255,0.1);">
+            <strong class="warn" style="font-size:1.15rem;">114年底正式跨入超高齡社會</strong>
+            <p style="font-size:1.02rem; color:#d4d4d8; margin-top:0.35rem; line-height:1.5;">65歲以上占比於 11412 突破 WHO 定義之 20% 超高齡門檻（20.06%），11509 續升至 20.70%。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: COUNTIES PART 1 (RANK 1-11) -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">COUNTY RANKING (1/2)</span>
+        <h2 class="slide-title">22 縣市人口消長排行（第 1–11 名：正成長與輕微收縮縣市）</h2>
+      </div>
+      <div class="slide-subtitle">全國僅 7 個縣市總人口正成長：新竹縣 (+3.93%)、桃園市 (+3.79%)、臺中市 (+1.88%) 領跑</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>縣市名稱</th>
+                <th>11012 總人口</th>
+                <th>11412 總人口</th>
+                <th>11509 總人口</th>
+                <th>五年淨增減</th>
+                <th>總人口成長率</th>
+                <th>3–12歲變化率</th>
+                <th>0–5歲變化率</th>
+                <th>6–11歲變化率</th>
+                <th>11509 高齡比</th>
+              </tr>
+            </thead>
+            <tbody id="county-tbody-1"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: COUNTIES PART 2 (RANK 12-22) -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">COUNTY RANKING (2/2)</span>
+        <h2 class="slide-title">22 縣市人口消長排行（第 12–22 名：外移與高齡化顯著縣市）</h2>
+      </div>
+      <div class="slide-subtitle">臺北市淨減 10.55 萬人 (-4.18%)、彰化縣淨減 5.49 萬人 (-4.37%)、嘉義縣跌幅最深 (-4.93%)</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>縣市名稱</th>
+                <th>11012 總人口</th>
+                <th>11412 總人口</th>
+                <th>11509 總人口</th>
+                <th>五年淨增減</th>
+                <th>總人口成長率</th>
+                <th>3–12歲變化率</th>
+                <th>0–5歲變化率</th>
+                <th>6–11歲變化率</th>
+                <th>11509 高齡比</th>
+              </tr>
+            </thead>
+            <tbody id="county-tbody-2"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: TOP 10 TOWNSHIPS BY GROWTH RATE -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">TOP GROWTH RATE TOWNSHIPS</span>
+        <h2 class="slide-title">鄉鎮市區總人口「成長率 %」TOP 10（基期 ≥ 5,000 人）</h2>
+      </div>
+      <div class="slide-subtitle">桃園龜山 (+14.23%)、臺中梧棲 (+14.09%)、新北淡水 (+13.50%)、桃園觀音 (+11.97%)、新北林口 (+11.93%) 居前五</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>鄉鎮市區</th>
+                <th>11012 總人口</th>
+                <th>11509 總人口</th>
+                <th>五年淨增加</th>
+                <th>五年總成長率</th>
+                <th>3–12歲變化</th>
+                <th>6–11歲(國小)變化</th>
+                <th>綜稅所得中位數</th>
+              </tr>
+            </thead>
+            <tbody id="top-rate-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: TOP 10 TOWNSHIPS BY ABSOLUTE GAIN -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">TOP ABSOLUTE GAIN TOWNSHIPS</span>
+        <h2 class="slide-title">鄉鎮市區總人口「絕對淨增加人數」TOP 10</h2>
+      </div>
+      <div class="slide-subtitle">臺中北屯 (+2.84萬)、新北淡水 (+2.50萬)、桃園龜山 (+2.37萬)、桃園區 (+1.96萬)、中壢 (+1.63萬)、竹北 (+1.52萬)</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>鄉鎮市區</th>
+                <th>11012 總人口</th>
+                <th>11509 總人口</th>
+                <th>五年淨增加人數</th>
+                <th>五年總成長率</th>
+                <th>11509 學齡(3–12歲)</th>
+                <th>綜稅所得中位數</th>
+              </tr>
+            </thead>
+            <tbody id="top-abs-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: DOUBLE GROWTH (TOTAL + SCHOOL 3-12) TOP 10 -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">GOLDEN EDUCATION HOTSPOTS</span>
+        <h2 class="slide-title">逆勢突圍！全台「總人口 × 3–12歲學齡」雙成長 TOP 10 行政區</h2>
+      </div>
+      <div class="slide-subtitle">在全台 3–12 歲大減 9.1% 的環境下，這 10 大重劃／科技熱區學童逆勢正成長，為教育展店首選</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>鄉鎮市區</th>
+                <th>11012 學齡(3–12)</th>
+                <th>11509 學齡(3–12)</th>
+                <th>3–12歲淨增加</th>
+                <th>3–12歲成長率</th>
+                <th>6–11歲(國小)成長</th>
+                <th>總人口成長率</th>
+                <th>綜稅所得中位數</th>
+              </tr>
+            </thead>
+            <tbody id="school-grow-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: YOUNGEST & HIGH INCOME TOWNSHIPS -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">YOUNGEST & AFFLUENT DISTRICTS</span>
+        <h2 class="slide-title">全台「學童密度最高（3–12歲占比）」TOP 10 行政區</h2>
+      </div>
+      <div class="slide-subtitle">竹北市（占比13.91%、中位所得122.2萬）與新竹東區（占比12.81%、中位83.5萬）穩居高所得學童核心</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="table-wrap" style="margin-bottom: 1.2rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>鄉鎮市區</th>
+                <th>11509 總人口</th>
+                <th>11509 學齡(3–12歲)</th>
+                <th>3–12歲占全區比例</th>
+                <th>65歲+高齡比例</th>
+                <th>綜稅所得中位數</th>
+                <th>綜稅所得平均數</th>
+              </tr>
+            </thead>
+            <tbody id="youngest-tbody"></tbody>
+          </table>
+        </div>
+        <div style="background:rgba(14,165,233,0.12); border-left:5px solid #0ea5e9; padding:0.95rem 1.4rem; border-radius:0.5rem; font-size:1.12rem; line-height:1.55;">
+          <strong class="info">策略解讀：高密度成熟區 vs 高成長新興區</strong> — <strong>竹北市、新竹市東區、臺北市中正/大安區</strong> 雖因早期移入家庭子女升上國中或少子化導致 3–12 歲人數微減，但憑藉<strong>超高學齡占比（11%–14%）與全台頂尖家庭所得</strong>，仍是高單價教育品牌的獲利基石；而 <strong>林口區、善化區</strong> 則同時兼具高占比、正成長與高所得三大優勢。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 11: URBAN EXODUS & RURAL DEPOPULATION -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">DECLINE & AGING ALERT</span>
+        <h2 class="slide-title">人口流失與超高齡預警 — 都會脫北潮 vs 偏鄉極限化</h2>
+      </div>
+      <div class="slide-subtitle">左表：都會核心人口淨減少 TOP 8（北市佔7席）｜右表：偏鄉衰退率最深 TOP 8（基期 ≥ 5,000 人）</div>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">都會外移：總人口「淨減少數」TOP 8</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>鄉鎮市區</th>
+                  <th>11509 人口</th>
+                  <th>五年淨減少</th>
+                  <th>3–12歲變化</th>
+                  <th>65+占比</th>
+                </tr>
+              </thead>
+              <tbody id="bottom-abs-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">偏鄉萎縮：總人口「衰退率 %」TOP 8</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>鄉鎮市區</th>
+                  <th>11509 人口</th>
+                  <th>五年衰退率</th>
+                  <th>3–12歲變化</th>
+                  <th>65+占比</th>
+                </tr>
+              </thead>
+              <tbody id="bottom-rate-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 12: MICRO VILLAGE DRILLDOWN -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">VILLAGE-LEVEL MICRO DRILLDOWN</span>
+        <h2 class="slide-title">村里級微觀下鑽 — 全台爆發力最強的「造鎮級超級村里」</h2>
+      </div>
+      <div class="slide-subtitle">大行政區內部極度不均：重劃區單一村里五年人口與學童數激增 +120% 至 +286%</div>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">村里「總人口成長率」TOP 8（基期 ≥ 1,000 人）</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>村里名稱</th>
+                  <th>11012 → 11509 總人口</th>
+                  <th>總人口成長</th>
+                  <th>學齡成長率</th>
+                </tr>
+              </thead>
+              <tbody id="vill-total-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">村里「3–12歲學齡成長率」TOP 8（基期 ≥ 125 人）</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>村里名稱</th>
+                  <th>11012 → 11509 學齡</th>
+                  <th>學齡淨增</th>
+                  <th>學齡成長率</th>
+                </tr>
+              </thead>
+              <tbody id="vill-school-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 13: STRATEGIC MATRIX -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">STRATEGIC MATRIX & ACTION PLAN</span>
+        <h2 class="slide-title">人口消長 × 綜稅所得交叉矩陣 — 四大商業展店與資源配置策略</h2>
+      </div>
+      <div class="slide-subtitle">結合戶政人口結構趨勢與財政部綜稅所得中位數之實務行動指南</div>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="gap: 1.4rem;">
+        <div class="quad-box" style="border-left: 6px solid #10b981;">
+          <div class="quad-title pos">第一象限：高所得 × 人口與學齡雙成長（黃金旗艦拓點區）</div>
+          <div class="quad-desc">
+            <strong>代表行政區</strong>：<strong>新北市林口區</strong>（中位68.2萬｜總+11.9%｜學齡+4.9%）、<strong>臺南市善化區</strong>（中位65.9萬｜總+5.3%｜學齡+4.9%）、<strong>臺中市北屯區</strong>（中位53.7萬｜學齡淨增+1,642人全台第一）、<strong>桃園市龜山區</strong>（中位51.8萬｜總+14.2%）、<strong>高雄市橋頭區／仁武區</strong>。<br>
+            <strong>行動建議</strong>：生源與購買力雙向擴張，列為教育、親子、連鎖零售<strong>第一優先增設據點區</strong>。
+          </div>
+        </div>
+        <div class="quad-box" style="border-left: 6px solid #0ea5e9;">
+          <div class="quad-title info">第二象限：超高所得 × 總量龐大但增速放緩（精耕里別區）</div>
+          <div class="quad-desc">
+            <strong>代表行政區</strong>：<strong>新竹縣竹北市</strong>（中位122.2萬全台第一｜學齡3.08萬人）、<strong>新竹市東區</strong>（中位83.5萬｜學齡2.84萬人）、<strong>臺中市南屯／西屯區</strong>、<strong>桃園市桃園／中壢區</strong>。<br>
+            <strong>行動建議</strong>：全區整體學齡雖微減，但內部新重劃里（如<strong>中壢青埔、桃園中路/文中里、小檜溪/青溪里、南屯春安里</strong>）學童翻倍暴增，必須<strong>下鑽至村里與國小 500m 圈精準選址</strong>。
+          </div>
+        </div>
+        <div class="quad-box" style="border-left: 6px solid #f59e0b;">
+          <div class="quad-title warn">第三象限：高所得老城區 × 人口外移高齡化（熟齡升級區）</div>
+          <div class="quad-desc">
+            <strong>代表行政區</strong>：<strong>臺北市大安區</strong>（中位82.5萬｜65+達26.6%）、<strong>中正區</strong>（75.5萬）、<strong>松山區</strong>（73.9萬）、<strong>信義區</strong>（62.3萬）、<strong>士林區</strong>（61.5萬）。<br>
+            <strong>行動建議</strong>：幼童五年減少約 30%，兒童業務應走「精緻高單價、小班化」鞏固既有明星學區；同時極適合佈局<strong>高階自費醫療、樂齡健康管理與財富傳承服務</strong>。
+          </div>
+        </div>
+        <div class="quad-box" style="border-left: 6px solid #a855f7;">
+          <div class="quad-title" style="color:#c084fc;">第四象限：平價剛需 × 人口快速移入（高 CP 值造鎮區）</div>
+          <div class="quad-desc">
+            <strong>代表行政區</strong>：<strong>桃園市觀音區</strong>（中位45.0萬｜總+12.0%｜國小+19.7%）、<strong>臺中市梧棲區</strong>（中位47.4萬｜總+14.1%｜國小+10.3%）、<strong>臺中市烏日區</strong>（國小+7.4%）、<strong>新北市淡水區</strong>（淨增2.5萬人）。<br>
+            <strong>行動建議</strong>：受惠房價外溢效應，年輕雙薪首購家庭大量移入，適合<strong>大眾化連鎖品牌、平價課後安親與日常剛需消費業態</strong>搶先卡位。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 14: INTERACTIVE 368 EXPLORER -->
+  <section class="slide">
+    <div class="slide-header">
+      <div>
+        <span class="slide-tag">INTERACTIVE DATA EXPLORER</span>
+        <h2 class="slide-title">全台 368 鄉鎮市區近五年人口與所得互動查詢表</h2>
+      </div>
+      <div class="slide-subtitle">支援依縣市篩選、關鍵字搜尋，並可點擊表頭欄位自由排序</div>
+    </div>
+    <div class="slide-body">
+      <div class="card">
+        <div class="filter-bar">
+          <select id="filter-county" class="select-ctrl">
+            <option value="">全部縣市 (368區)</option>
+          </select>
+          <input type="text" id="filter-search" class="input-ctrl" placeholder="搜尋鄉鎮市區名稱 (如：竹北、北屯、龜山、林口)..." style="width:340px;">
+          <select id="filter-preset" class="select-ctrl">
+            <option value="all">顯示全部鄉鎮 (368區)</option>
+            <option value="double">🔥 總人口 & 3-12歲雙成長區</option>
+            <option value="grow">📈 總人口正成長區 (86區)</option>
+            <option value="highInc">💰 高所得區 (中位數 ≥ 550千元)</option>
+            <option value="superAged">🧓 超高齡區 (65歲+ ≥ 25%)</option>
+          </select>
+          <span id="filter-count" style="font-size:1.1rem; color:#fbbf24; font-weight:800; margin-left:auto;">共 368 筆</span>
+        </div>
+        <div class="table-wrap">
+          <table id="explorer-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="name">行政區 ↕</th>
+                <th class="sortable" data-sort="t110">11012 人口 ↕</th>
+                <th class="sortable" data-sort="t115">11509 人口 ↕</th>
+                <th class="sortable" data-sort="diff">五年淨增減 ↕</th>
+                <th class="sortable" data-sort="g">總成長率 ↕</th>
+                <th class="sortable" data-sort="s115">11509 學齡(3–12) ↕</th>
+                <th class="sortable" data-sort="sDiff">學齡淨增減 ↕</th>
+                <th class="sortable" data-sort="sG">3–12歲成長率 ↕</th>
+                <th class="sortable" data-sort="g0_5">0–5歲變化 ↕</th>
+                <th class="sortable" data-sort="g6_11">6–11歲變化 ↕</th>
+                <th class="sortable" data-sort="oldPct">65+高齡比 ↕</th>
+                <th class="sortable" data-sort="medInc">綜稅中位(千元) ↕</th>
+              </tr>
+            </thead>
+            <tbody id="explorer-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Navigation Bar -->
+<div class="nav-bar">
+  <div style="font-size:1.05rem; font-weight:800; color:#e4e4e7;" id="slide-indicator">Slide 1 / 14</div>
+  <div class="nav-dots" id="nav-dots"></div>
+  <div class="nav-btns">
+    <button class="btn" onclick="prevSlide()">← 上一頁</button>
+    <button class="btn" onclick="nextSlide()">下一頁 →</button>
+  </div>
+</div>
+
+<script>
+const COUNTY_DATA = [{"name":"新竹縣","t110":575580,"t114":597235,"t115":598229,"diff110_115":22649,"g110_115_num":0.039349873171409706,"s110":64384,"s115":60967,"sGrowth_num":-0.05307219184890656,"c0_5_growth":"-20.0%","c6_11_growth":"-2.8%","oldPct115":"15.5%"},{"name":"桃園市","t110":2272391,"t114":2355106,"t115":2358611,"diff110_115":86220,"g110_115_num":0.03794241395956946,"s110":222061,"s115":210193,"sGrowth_num":-0.05344477418367025,"c0_5_growth":"-24.8%","c6_11_growth":"-0.6%","oldPct115":"17.3%"},{"name":"臺中市","t110":2813490,"t114":2868465,"t115":2866367,"diff110_115":52877,"g110_115_num":0.01879409558946362,"s110":271363,"s115":251542,"sGrowth_num":-0.0730423823439452,"c0_5_growth":"-24.8%","c6_11_growth":"-2.1%","oldPct115":"18.0%"},{"name":"新竹市","t110":452640,"t114":455740,"t115":455731,"diff110_115":3091,"g110_115_num":0.006828826440438317,"s110":53385,"s115":46924,"sGrowth_num":-0.12102650557272641,"c0_5_growth":"-25.8%","c6_11_growth":"-9.4%","oldPct115":"16.7%"},{"name":"新北市","t110":4008113,"t114":4044831,"t115":4034572,"diff110_115":26459,"g110_115_num":0.006601360789977728,"s110":328090,"s115":293579,"sGrowth_num":-0.10518760096315036,"c0_5_growth":"-27.6%","c6_11_growth":"-6.6%","oldPct115":"20.7%"},{"name":"澎湖縣","t110":106340,"t114":106716,"t115":106725,"diff110_115":385,"g110_115_num":0.0036204626669174345,"s110":6806,"s115":6614,"sGrowth_num":-0.02821040258595357,"c0_5_growth":"-22.5%","c6_11_growth":"1.1%","oldPct115":"21.8%"},{"name":"連江縣","t110":13645,"t114":13621,"t115":13660,"diff110_115":15,"g110_115_num":0.0010993037742762918,"s110":942,"s115":836,"sGrowth_num":-0.11252653927813164,"c0_5_growth":"-34.2%","c6_11_growth":"-4.2%","oldPct115":"17.8%"},{"name":"宜蘭縣","t110":450692,"t114":449336,"t115":447883,"diff110_115":-2809,"g110_115_num":-0.0062326378103006045,"s110":36008,"s115":33521,"sGrowth_num":-0.06906798489224616,"c0_5_growth":"-21.7%","c6_11_growth":"-2.3%","oldPct115":"21.4%"},{"name":"臺南市","t110":1862059,"t114":1852477,"t115":1845313,"diff110_115":-16746,"g110_115_num":-0.008993270352872814,"s110":153641,"s115":140687,"sGrowth_num":-0.08431343196152069,"c0_5_growth":"-24.6%","c6_11_growth":"-3.7%","oldPct115":"21.2%"},{"name":"嘉義市","t110":264727,"t114":261592,"t115":261429,"diff110_115":-3298,"g110_115_num":-0.012458117230203191,"s110":24280,"s115":21646,"sGrowth_num":-0.1084843492586491,"c0_5_growth":"-22.0%","c6_11_growth":"-6.9%","oldPct115":"20.5%"},{"name":"高雄市","t110":2744691,"t114":2718545,"t115":2705240,"diff110_115":-39451,"g110_115_num":-0.014373567006267737,"s110":217013,"s115":198733,"sGrowth_num":-0.08423458502486027,"c0_5_growth":"-24.6%","c6_11_growth":"-4.2%","oldPct115":"21.4%"},{"name":"苗栗縣","t110":538178,"t114":531172,"t115":529012,"diff110_115":-9166,"g110_115_num":-0.017031539750788773,"s110":45491,"s115":40983,"sGrowth_num":-0.099096524587281,"c0_5_growth":"-21.8%","c6_11_growth":"-5.9%","oldPct115":"20.8%"},{"name":"基隆市","t110":363977,"t114":359836,"t115":357575,"diff110_115":-6402,"g110_115_num":-0.017589023482253,"s110":25298,"s115":22931,"sGrowth_num":-0.09356470867262234,"c0_5_growth":"-29.7%","c6_11_growth":"-3.6%","oldPct115":"23.1%"},{"name":"臺東縣","t110":213386,"t114":208320,"t115":207454,"diff110_115":-5932,"g110_115_num":-0.027799387026327876,"s110":16285,"s115":14953,"sGrowth_num":-0.08179306109917102,"c0_5_growth":"-15.3%","c6_11_growth":"-5.8%","oldPct115":"21.5%"},{"name":"金門縣","t110":141539,"t114":139313,"t115":137490,"diff110_115":-4049,"g110_115_num":-0.028606956386578963,"s110":7980,"s115":7049,"sGrowth_num":-0.11666666666666667,"c0_5_growth":"-37.3%","c6_11_growth":"-4.1%","oldPct115":"20.4%"},{"name":"花蓮縣","t110":321358,"t114":312807,"t115":310550,"diff110_115":-10808,"g110_115_num":-0.033632273041281066,"s110":25470,"s115":22666,"sGrowth_num":-0.11009030231645073,"c0_5_growth":"-25.7%","c6_11_growth":"-6.8%","oldPct115":"22.2%"},{"name":"屏東縣","t110":804440,"t114":782256,"t115":777252,"diff110_115":-27188,"g110_115_num":-0.03379742429516185,"s110":56416,"s115":52991,"sGrowth_num":-0.060709727736812255,"c0_5_growth":"-16.5%","c6_11_growth":"-2.3%","oldPct115":"22.5%"},{"name":"雲林縣","t110":670132,"t114":650989,"t115":645881,"diff110_115":-24251,"g110_115_num":-0.03618839273456573,"s110":49007,"s115":44361,"sGrowth_num":-0.09480278327585855,"c0_5_growth":"-12.9%","c6_11_growth":"-6.8%","oldPct115":"22.3%"},{"name":"南投縣","t110":484897,"t114":467881,"t115":465984,"diff110_115":-18913,"g110_115_num":-0.0390041596462754,"s110":34664,"s115":32002,"sGrowth_num":-0.07679436879759982,"c0_5_growth":"-19.3%","c6_11_growth":"-4.9%","oldPct115":"23.5%"},{"name":"臺北市","t110":2524393,"t114":2439507,"t115":2418872,"diff110_115":-105521,"g110_115_num":-0.041800543734672055,"s110":230009,"s115":197089,"sGrowth_num":-0.14312483424561648,"c0_5_growth":"-32.9%","c6_11_growth":"-8.5%","oldPct115":"24.9%"},{"name":"彰化縣","t110":1255330,"t114":1210206,"t115":1200447,"diff110_115":-54883,"g110_115_num":-0.04371997801374937,"s110":103439,"s115":91952,"sGrowth_num":-0.11105095756919538,"c0_5_growth":"-29.1%","c6_11_growth":"-7.1%","oldPct115":"21.0%"},{"name":"嘉義縣","t110":493316,"t114":473181,"t115":468974,"diff110_115":-24342,"g110_115_num":-0.04934362558684494,"s110":28557,"s115":25833,"sGrowth_num":-0.09538817102636832,"c0_5_growth":"-22.4%","c6_11_growth":"-6.5%","oldPct115":"24.8%"}];
+const TOP_RATE = [{"code":"68000070","name":"桃園市龜山區","county":"桃園市","town":"龜山區","t110":166767,"t114":188328,"t115":190506,"diff":23739,"g":14.23,"s110":14951,"s115":15346,"sDiff":395,"sG":2.64,"g0_5":-13.4,"g6_11":6.4,"oldPct":17.1,"sShare":8.1,"medInc":518,"avgInc":836},{"code":"66000140","name":"臺中市梧棲區","county":"臺中市","town":"梧棲區","t110":59517,"t114":65685,"t115":67903,"diff":8386,"g":14.09,"s110":6157,"s115":6356,"sDiff":199,"sG":3.23,"g0_5":-12.4,"g6_11":10.3,"oldPct":15.3,"sShare":9.4,"medInc":474,"avgInc":727},{"code":"65000100","name":"新北市淡水區","county":"新北市","town":"淡水區","t110":185197,"t114":208004,"t115":210196,"diff":24999,"g":13.5,"s110":14408,"s115":14111,"sDiff":-297,"sG":-2.06,"g0_5":-19,"g6_11":1.7,"oldPct":20.8,"sShare":6.7,"medInc":514,"avgInc":852},{"code":"68000120","name":"桃園市觀音區","county":"桃園市","town":"觀音區","t110":69995,"t114":77526,"t115":78376,"diff":8381,"g":11.97,"s110":6029,"s115":6616,"sDiff":587,"sG":9.74,"g0_5":-10,"g6_11":19.7,"oldPct":15.9,"sShare":8.4,"medInc":450,"avgInc":627},{"code":"65000170","name":"新北市林口區","county":"新北市","town":"林口區","t110":124628,"t114":138461,"t115":139499,"diff":14871,"g":11.93,"s110":15981,"s115":16769,"sDiff":788,"sG":4.93,"g0_5":-15.7,"g6_11":9.1,"oldPct":15.3,"sShare":12,"medInc":682,"avgInc":1198},{"code":"66000080","name":"臺中市北屯區","county":"臺中市","town":"北屯區","t110":290653,"t114":317182,"t115":319081,"diff":28428,"g":9.78,"s110":29449,"s115":31091,"sDiff":1642,"sG":5.58,"g0_5":-12.7,"g6_11":11.2,"oldPct":16.4,"sShare":9.7,"medInc":537,"avgInc":890},{"code":"64000200","name":"高雄市橋頭區","county":"高雄市","town":"橋頭區","t110":40094,"t114":43341,"t115":43849,"diff":3755,"g":9.37,"s110":2712,"s115":3148,"sDiff":436,"sG":16.08,"g0_5":0.2,"g6_11":18,"oldPct":20.5,"sShare":7.2,"medInc":508,"avgInc":772},{"code":"65000230","name":"新北市八里區","county":"新北市","town":"八里區","t110":40178,"t114":43495,"t115":43489,"diff":3311,"g":8.24,"s110":2980,"s115":2847,"sDiff":-133,"sG":-4.46,"g0_5":-24,"g6_11":2.3,"oldPct":18.8,"sShare":6.5,"medInc":435,"avgInc":676},{"code":"64000170","name":"高雄市仁武區","county":"高雄市","town":"仁武區","t110":93581,"t114":100311,"t115":100748,"diff":7167,"g":7.66,"s110":7150,"s115":7286,"sDiff":136,"sG":1.9,"g0_5":-11.8,"g6_11":4.4,"oldPct":16.4,"sShare":7.2,"medInc":528,"avgInc":774},{"code":"10004010","name":"新竹縣竹北市","county":"新竹縣","town":"竹北市","t110":206189,"t114":220973,"t115":221344,"diff":15155,"g":7.35,"s110":32661,"s115":30787,"sDiff":-1874,"sG":-5.74,"g0_5":-23.2,"g6_11":-3.1,"oldPct":10.3,"sShare":13.9,"medInc":1222,"avgInc":2057}];
+const TOP_ABS = [{"code":"66000080","name":"臺中市北屯區","county":"臺中市","town":"北屯區","t110":290653,"t114":317182,"t115":319081,"diff":28428,"g":9.78,"s110":29449,"s115":31091,"sDiff":1642,"sG":5.58,"g0_5":-12.7,"g6_11":11.2,"oldPct":16.4,"sShare":9.7,"medInc":537,"avgInc":890},{"code":"65000100","name":"新北市淡水區","county":"新北市","town":"淡水區","t110":185197,"t114":208004,"t115":210196,"diff":24999,"g":13.5,"s110":14408,"s115":14111,"sDiff":-297,"sG":-2.06,"g0_5":-19,"g6_11":1.7,"oldPct":20.8,"sShare":6.7,"medInc":514,"avgInc":852},{"code":"68000070","name":"桃園市龜山區","county":"桃園市","town":"龜山區","t110":166767,"t114":188328,"t115":190506,"diff":23739,"g":14.23,"s110":14951,"s115":15346,"sDiff":395,"sG":2.64,"g0_5":-13.4,"g6_11":6.4,"oldPct":17.1,"sShare":8.1,"medInc":518,"avgInc":836},{"code":"68000010","name":"桃園市桃園區","county":"桃園市","town":"桃園區","t110":458847,"t114":478487,"t115":478459,"diff":19612,"g":4.27,"s110":46954,"s115":44441,"sDiff":-2513,"sG":-5.35,"g0_5":-22.6,"g6_11":-2.5,"oldPct":17.2,"sShare":9.3,"medInc":566,"avgInc":959},{"code":"68000020","name":"桃園市中壢區","county":"桃園市","town":"中壢區","t110":422529,"t114":439213,"t115":438835,"diff":16306,"g":3.86,"s110":42372,"s115":40781,"sDiff":-1591,"sG":-3.75,"g0_5":-25.3,"g6_11":1.1,"oldPct":17.2,"sShare":9.3,"medInc":525,"avgInc":863},{"code":"10004010","name":"新竹縣竹北市","county":"新竹縣","town":"竹北市","t110":206189,"t114":220973,"t115":221344,"diff":15155,"g":7.35,"s110":32661,"s115":30787,"sDiff":-1874,"sG":-5.74,"g0_5":-23.2,"g6_11":-3.1,"oldPct":10.3,"sShare":13.9,"medInc":1222,"avgInc":2057},{"code":"65000170","name":"新北市林口區","county":"新北市","town":"林口區","t110":124628,"t114":138461,"t115":139499,"diff":14871,"g":11.93,"s110":15981,"s115":16769,"sDiff":788,"sG":4.93,"g0_5":-15.7,"g6_11":9.1,"oldPct":15.3,"sShare":12,"medInc":682,"avgInc":1198},{"code":"66000070","name":"臺中市南屯區","county":"臺中市","town":"南屯區","t110":176782,"t114":186105,"t115":186094,"diff":9312,"g":5.27,"s110":20086,"s115":19091,"sDiff":-995,"sG":-4.95,"g0_5":-20,"g6_11":-1,"oldPct":14.5,"sShare":10.3,"medInc":635,"avgInc":1094},{"code":"66000140","name":"臺中市梧棲區","county":"臺中市","town":"梧棲區","t110":59517,"t114":65685,"t115":67903,"diff":8386,"g":14.09,"s110":6157,"s115":6356,"sDiff":199,"sG":3.23,"g0_5":-12.4,"g6_11":10.3,"oldPct":15.3,"sShare":9.4,"medInc":474,"avgInc":727},{"code":"68000120","name":"桃園市觀音區","county":"桃園市","town":"觀音區","t110":69995,"t114":77526,"t115":78376,"diff":8381,"g":11.97,"s110":6029,"s115":6616,"sDiff":587,"sG":9.74,"g0_5":-10,"g6_11":19.7,"oldPct":15.9,"sShare":8.4,"medInc":450,"avgInc":627}];
+const SCHOOL_DOUBLE = [{"code":"66000080","name":"臺中市北屯區","county":"臺中市","town":"北屯區","t110":290653,"t114":317182,"t115":319081,"diff":28428,"g":9.78,"s110":29449,"s115":31091,"sDiff":1642,"sG":5.58,"g0_5":-12.7,"g6_11":11.2,"oldPct":16.4,"sShare":9.7,"medInc":537,"avgInc":890},{"code":"65000170","name":"新北市林口區","county":"新北市","town":"林口區","t110":124628,"t114":138461,"t115":139499,"diff":14871,"g":11.93,"s110":15981,"s115":16769,"sDiff":788,"sG":4.93,"g0_5":-15.7,"g6_11":9.1,"oldPct":15.3,"sShare":12,"medInc":682,"avgInc":1198},{"code":"68000120","name":"桃園市觀音區","county":"桃園市","town":"觀音區","t110":69995,"t114":77526,"t115":78376,"diff":8381,"g":11.97,"s110":6029,"s115":6616,"sDiff":587,"sG":9.74,"g0_5":-10,"g6_11":19.7,"oldPct":15.9,"sShare":8.4,"medInc":450,"avgInc":627},{"code":"64000200","name":"高雄市橋頭區","county":"高雄市","town":"橋頭區","t110":40094,"t114":43341,"t115":43849,"diff":3755,"g":9.37,"s110":2712,"s115":3148,"sDiff":436,"sG":16.08,"g0_5":0.2,"g6_11":18,"oldPct":20.5,"sShare":7.2,"medInc":508,"avgInc":772},{"code":"68000070","name":"桃園市龜山區","county":"桃園市","town":"龜山區","t110":166767,"t114":188328,"t115":190506,"diff":23739,"g":14.23,"s110":14951,"s115":15346,"sDiff":395,"sG":2.64,"g0_5":-13.4,"g6_11":6.4,"oldPct":17.1,"sShare":8.1,"medInc":518,"avgInc":836},{"code":"10004050","name":"新竹縣湖口鄉","county":"新竹縣","town":"湖口鄉","t110":79602,"t114":84963,"t115":85133,"diff":5531,"g":6.95,"s110":7669,"s115":8041,"sDiff":372,"sG":4.85,"g0_5":-1.8,"g6_11":3.5,"oldPct":15.8,"sShare":9.4,"medInc":499,"avgInc":743},{"code":"10008030","name":"南投縣草屯鎮","county":"南投縣","town":"草屯鎮","t110":96923,"t114":97724,"t115":98247,"diff":1324,"g":1.37,"s110":7288,"s115":7625,"sDiff":337,"sG":4.62,"g0_5":9.6,"g6_11":0.9,"oldPct":21.3,"sShare":7.8,"medInc":452,"avgInc":675},{"code":"67000190","name":"臺南市善化區","county":"臺南市","town":"善化區","t110":51265,"t114":53888,"t115":53985,"diff":2720,"g":5.31,"s110":5724,"s115":6003,"sDiff":279,"sG":4.87,"g0_5":-15.8,"g6_11":11.1,"oldPct":17.4,"sShare":11.1,"medInc":659,"avgInc":1161},{"code":"66000010","name":"臺中市中區","county":"臺中市","town":"中區","t110":17689,"t114":18029,"t115":18011,"diff":322,"g":1.82,"s110":2297,"s115":2508,"sDiff":211,"sG":9.19,"g0_5":-36.4,"g6_11":22.5,"oldPct":23.7,"sShare":13.9,"medInc":452,"avgInc":798},{"code":"66000140","name":"臺中市梧棲區","county":"臺中市","town":"梧棲區","t110":59517,"t114":65685,"t115":67903,"diff":8386,"g":14.09,"s110":6157,"s115":6356,"sDiff":199,"sG":3.23,"g0_5":-12.4,"g6_11":10.3,"oldPct":15.3,"sShare":9.4,"medInc":474,"avgInc":727}];
+const YOUNGEST = [{"code":"10004010","name":"新竹縣竹北市","county":"新竹縣","town":"竹北市","t110":206189,"t114":220973,"t115":221344,"diff":15155,"g":7.35,"s110":32661,"s115":30787,"sDiff":-1874,"sG":-5.74,"g0_5":-23.2,"g6_11":-3.1,"oldPct":10.3,"sShare":13.9,"medInc":1222,"avgInc":2057},{"code":"10013180","name":"屏東縣崁頂鄉","county":"屏東縣","town":"崁頂鄉","t110":15272,"t114":14459,"t115":14294,"diff":-978,"g":-6.4,"s110":2141,"s115":1983,"sDiff":-158,"sG":-7.38,"g0_5":-23.6,"g6_11":-0.1,"oldPct":21.8,"sShare":13.9,"medInc":424,"avgInc":579},{"code":"66000010","name":"臺中市中區","county":"臺中市","town":"中區","t110":17689,"t114":18029,"t115":18011,"diff":322,"g":1.82,"s110":2297,"s115":2508,"sDiff":211,"sG":9.19,"g0_5":-36.4,"g6_11":22.5,"oldPct":23.7,"sShare":13.9,"medInc":452,"avgInc":798},{"code":"10018010","name":"新竹市東區","county":"新竹市","town":"東區","t110":221651,"t114":222219,"t115":221682,"diff":31,"g":0.01,"s110":31804,"s115":28402,"sDiff":-3402,"sG":-10.7,"g0_5":-27.1,"g6_11":-7.8,"oldPct":15.4,"sShare":12.8,"medInc":835,"avgInc":1944},{"code":"65000170","name":"新北市林口區","county":"新北市","town":"林口區","t110":124628,"t114":138461,"t115":139499,"diff":14871,"g":11.93,"s110":15981,"s115":16769,"sDiff":788,"sG":4.93,"g0_5":-15.7,"g6_11":9.1,"oldPct":15.3,"sShare":12,"medInc":682,"avgInc":1198},{"code":"10002120","name":"宜蘭縣南澳鄉","county":"宜蘭縣","town":"南澳鄉","t110":6010,"t114":6171,"t115":6224,"diff":214,"g":3.56,"s110":745,"s115":703,"sDiff":-42,"sG":-5.64,"g0_5":-1.2,"g6_11":-7.7,"oldPct":14.7,"sShare":11.3,"medInc":426,"avgInc":494},{"code":"10004120","name":"新竹縣尖石鄉","county":"新竹縣","town":"尖石鄉","t110":9577,"t114":9464,"t115":9545,"diff":-32,"g":-0.33,"s110":1182,"s115":1081,"sDiff":-101,"sG":-8.54,"g0_5":-14.5,"g6_11":-4.6,"oldPct":12.1,"sShare":11.3,"medInc":402,"avgInc":565},{"code":"67000190","name":"臺南市善化區","county":"臺南市","town":"善化區","t110":51265,"t114":53888,"t115":53985,"diff":2720,"g":5.31,"s110":5724,"s115":6003,"sDiff":279,"sG":4.87,"g0_5":-15.8,"g6_11":11.1,"oldPct":17.4,"sShare":11.1,"medInc":659,"avgInc":1161},{"code":"67000370","name":"臺南市中西區","county":"臺南市","town":"中西區","t110":77704,"t114":75802,"t115":74512,"diff":-3192,"g":-4.11,"s110":8924,"s115":8234,"sDiff":-690,"sG":-7.73,"g0_5":-24.7,"g6_11":-5.4,"oldPct":23.6,"sShare":11.1,"medInc":558,"avgInc":1015},{"code":"63000050","name":"臺北市中正區","county":"臺北市","town":"中正區","t110":150644,"t114":144109,"t115":142673,"diff":-7971,"g":-5.29,"s110":17845,"s115":15599,"sDiff":-2246,"sG":-12.59,"g0_5":-32.8,"g6_11":-7.1,"oldPct":24.3,"sShare":10.9,"medInc":755,"avgInc":1444}];
+const BOTTOM_ABS = [{"code":"63000110","name":"臺北市士林區","county":"臺北市","town":"士林區","t110":269682,"t114":258163,"t115":255580,"diff":-14102,"g":-5.23,"s110":22255,"s115":19081,"sDiff":-3174,"sG":-14.26,"g0_5":-35.4,"g6_11":-7.9,"oldPct":26.1,"sShare":7.5,"medInc":623,"avgInc":1169},{"code":"63000030","name":"臺北市大安區","county":"臺北市","town":"大安區","t110":291410,"t114":282328,"t115":279617,"diff":-11793,"g":-4.05,"s110":31769,"s115":28329,"sDiff":-3440,"sG":-10.83,"g0_5":-28.3,"g6_11":-6.4,"oldPct":26.6,"sShare":10.1,"medInc":825,"avgInc":1620},{"code":"63000100","name":"臺北市內湖區","county":"臺北市","town":"內湖區","t110":276707,"t114":267959,"t115":265437,"diff":-11270,"g":-4.07,"s110":27164,"s115":24182,"sDiff":-2982,"sG":-10.98,"g0_5":-30.9,"g6_11":-3.6,"oldPct":21.3,"sShare":9.1,"medInc":679,"avgInc":1295},{"code":"63000120","name":"臺北市北投區","county":"臺北市","town":"北投區","t110":244750,"t114":235678,"t115":233973,"diff":-10777,"g":-4.4,"s110":22300,"s115":18832,"sDiff":-3468,"sG":-15.55,"g0_5":-33.2,"g6_11":-10.9,"oldPct":24.1,"sShare":8,"medInc":595,"avgInc":1109},{"code":"10007010","name":"彰化縣彰化市","county":"彰化縣","town":"彰化市","t110":228470,"t114":220487,"t115":218437,"diff":-10033,"g":-4.39,"s110":21814,"s115":19257,"sDiff":-2557,"sG":-11.72,"g0_5":-32.6,"g6_11":-8.5,"oldPct":21.3,"sShare":8.8,"medInc":486,"avgInc":770},{"code":"63000080","name":"臺北市文山區","county":"臺北市","town":"文山區","t110":261576,"t114":253822,"t115":252102,"diff":-9474,"g":-3.62,"s110":23774,"s115":19830,"sDiff":-3944,"sG":-16.59,"g0_5":-34.8,"g6_11":-10.4,"oldPct":22.9,"sShare":7.9,"medInc":654,"avgInc":1192},{"code":"63000070","name":"臺北市萬華區","county":"臺北市","town":"萬華區","t110":176617,"t114":168675,"t115":167175,"diff":-9442,"g":-5.35,"s110":11217,"s115":8589,"sDiff":-2628,"sG":-23.43,"g0_5":-39.7,"g6_11":-15.9,"oldPct":27.1,"sShare":5.1,"medInc":499,"avgInc":852},{"code":"63000020","name":"臺北市信義區","county":"臺北市","town":"信義區","t110":207500,"t114":201446,"t115":199198,"diff":-8302,"g":-4,"s110":15799,"s115":13355,"sDiff":-2444,"sG":-15.47,"g0_5":-33.4,"g6_11":-10,"oldPct":26.8,"sShare":6.7,"medInc":615,"avgInc":1210}];
+const BOTTOM_RATE = [{"code":"65000220","name":"新北市石門區","county":"新北市","town":"石門區","t110":11193,"t114":9994,"t115":9845,"diff":-1348,"g":-12.04,"s110":547,"s115":376,"sDiff":-171,"sG":-31.26,"g0_5":-36,"g6_11":-33.8,"oldPct":24.6,"sShare":3.8,"medInc":366,"avgInc":565},{"code":"64000220","name":"高雄市田寮區","county":"高雄市","town":"田寮區","t110":6788,"t114":6125,"t115":5993,"diff":-795,"g":-11.71,"s110":198,"s115":160,"sDiff":-38,"sG":-19.19,"g0_5":-51.4,"g6_11":0,"oldPct":34.7,"sShare":2.7,"medInc":405,"avgInc":571},{"code":"10005140","name":"苗栗縣西湖鄉","county":"苗栗縣","town":"西湖鄉","t110":6558,"t114":5875,"t115":5822,"diff":-736,"g":-11.22,"s110":243,"s115":162,"sDiff":-81,"sG":-33.33,"g0_5":-21.3,"g6_11":-38.3,"oldPct":30.1,"sShare":2.8,"medInc":448,"avgInc":633},{"code":"65000260","name":"新北市貢寮區","county":"新北市","town":"貢寮區","t110":11534,"t114":10445,"t115":10240,"diff":-1294,"g":-11.22,"s110":353,"s115":276,"sDiff":-77,"sG":-21.81,"g0_5":-34.1,"g6_11":-24.6,"oldPct":28.4,"sShare":2.7,"medInc":378,"avgInc":567},{"code":"10007240","name":"彰化縣大城鄉","county":"彰化縣","town":"大城鄉","t110":15733,"t114":14146,"t115":13999,"diff":-1734,"g":-11.02,"s110":733,"s115":569,"sDiff":-164,"sG":-22.37,"g0_5":-24.2,"g6_11":-25.8,"oldPct":28.4,"sShare":4.1,"medInc":405,"avgInc":588},{"code":"65000250","name":"新北市雙溪區","county":"新北市","town":"雙溪區","t110":8235,"t114":7442,"t115":7331,"diff":-904,"g":-10.98,"s110":321,"s115":230,"sDiff":-91,"sG":-28.35,"g0_5":-37.5,"g6_11":-27.3,"oldPct":34.3,"sShare":3.1,"medInc":400,"avgInc":580},{"code":"10005080","name":"苗栗縣大湖鄉","county":"苗栗縣","town":"大湖鄉","t110":13530,"t114":12310,"t115":12094,"diff":-1436,"g":-10.61,"s110":717,"s115":593,"sDiff":-124,"sG":-17.29,"g0_5":-38.7,"g6_11":-10.3,"oldPct":27.3,"sShare":4.9,"medInc":421,"avgInc":578},{"code":"67000170","name":"臺南市北門區","county":"臺南市","town":"北門區","t110":10397,"t114":9436,"t115":9301,"diff":-1096,"g":-10.54,"s110":460,"s115":306,"sDiff":-154,"sG":-33.48,"g0_5":-53.2,"g6_11":-22,"oldPct":26.4,"sShare":3.3,"medInc":410,"avgInc":590}];
+const VILL_TOTAL = [{"code":"66000070006","name":"臺中市南屯區春安里","base":1753,"last":5728,"diff":3975,"growth":2.2675413576725614,"sBase":160,"sLast":619,"sDiff":459,"sGrowth":2.86875},{"code":"68000050011","name":"桃園市蘆竹區山鼻里","base":2047,"last":5604,"diff":3557,"growth":1.7376648754274548,"sBase":130,"sLast":306,"sDiff":176,"sGrowth":1.353846153846154},{"code":"65000020004","name":"新北市三重區谷王里","base":1013,"last":2739,"diff":1726,"growth":1.7038499506416585,"sBase":40,"sLast":111,"sDiff":71,"sGrowth":1.775},{"code":"64000030035","name":"高雄市左營區自助里","base":1264,"last":3291,"diff":2027,"growth":1.6036392405063291,"sBase":66,"sLast":180,"sDiff":114,"sGrowth":1.7272727272727273},{"code":"66000140001","name":"臺中市梧棲區頂寮里","base":4339,"last":10867,"diff":6528,"growth":1.5044941230698317,"sBase":392,"sLast":898,"sDiff":506,"sGrowth":1.2908163265306123},{"code":"66000080007","name":"臺中市北屯區舊社里","base":9245,"last":23144,"diff":13899,"growth":1.5034072471606275,"sBase":822,"sLast":2732,"sDiff":1910,"sGrowth":2.32360097323601},{"code":"65000060052","name":"新北市新店區中山里","base":4920,"last":12188,"diff":7268,"growth":1.4772357723577236,"sBase":284,"sLast":629,"sDiff":345,"sGrowth":1.2147887323943662},{"code":"64000050079","name":"高雄市三民區德西里","base":1379,"last":3346,"diff":1967,"growth":1.4263959390862944,"sBase":83,"sLast":201,"sDiff":118,"sGrowth":1.4216867469879517}];
+const VILL_SCHOOL = [{"code":"66000070006","name":"臺中市南屯區春安里","base":1753,"last":5728,"diff":3975,"growth":2.2675413576725614,"sBase":160,"sLast":619,"sDiff":459,"sGrowth":2.86875},{"code":"66000080007","name":"臺中市北屯區舊社里","base":9245,"last":23144,"diff":13899,"growth":1.5034072471606275,"sBase":822,"sLast":2732,"sDiff":1910,"sGrowth":2.32360097323601},{"code":"63000020027","name":"臺北市信義區大仁里","base":3818,"last":7988,"diff":4170,"growth":1.0921948664222105,"sBase":208,"sLast":511,"sDiff":303,"sGrowth":1.4567307692307692},{"code":"64000200010","name":"高雄市橋頭區新莊里","base":5559,"last":9012,"diff":3453,"growth":0.6211548839719374,"sBase":387,"sLast":929,"sDiff":542,"sGrowth":1.400516795865633},{"code":"67000320033","name":"臺南市東區東智里","base":3219,"last":5333,"diff":2114,"growth":0.6567256912084498,"sBase":253,"sLast":598,"sDiff":345,"sGrowth":1.3636363636363635},{"code":"68000050011","name":"桃園市蘆竹區山鼻里","base":2047,"last":5604,"diff":3557,"growth":1.7376648754274548,"sBase":130,"sLast":306,"sDiff":176,"sGrowth":1.353846153846154},{"code":"64000030013","name":"高雄市左營區永清里","base":868,"last":1806,"diff":938,"growth":1.0806451612903225,"sBase":163,"sLast":383,"sDiff":220,"sGrowth":1.3496932515337423},{"code":"64000200011","name":"高雄市橋頭區甲北里","base":2522,"last":4151,"diff":1629,"growth":0.6459159397303728,"sBase":126,"sLast":296,"sDiff":170,"sGrowth":1.3492063492063493}];
+const ALL_TOWNS = [{"code":"10002010","name":"宜蘭縣宜蘭市","county":"宜蘭縣","town":"宜蘭市","t110":94869,"t114":94561,"t115":93912,"diff":-957,"g":-1.01,"s110":9163,"s115":8770,"sDiff":-393,"sG":-4.29,"g0_5":-23.3,"g6_11":-0.6,"oldPct":20.3,"sShare":9.3,"medInc":480,"avgInc":743},{"code":"10002020","name":"宜蘭縣羅東鎮","county":"宜蘭縣","town":"羅東鎮","t110":70732,"t114":68960,"t115":68096,"diff":-2636,"g":-3.73,"s110":7969,"s115":7270,"sDiff":-699,"sG":-8.77,"g0_5":-16.3,"g6_11":-6,"oldPct":21.5,"sShare":10.7,"medInc":475,"avgInc":722},{"code":"10002030","name":"宜蘭縣蘇澳鎮","county":"宜蘭縣","town":"蘇澳鎮","t110":38272,"t114":36413,"t115":36216,"diff":-2056,"g":-5.37,"s110":2522,"s115":2189,"sDiff":-333,"sG":-13.2,"g0_5":-29.1,"g6_11":-8,"oldPct":24.6,"sShare":6,"medInc":444,"avgInc":605},{"code":"10002040","name":"宜蘭縣頭城鎮","county":"宜蘭縣","town":"頭城鎮","t110":28544,"t114":27868,"t115":27924,"diff":-620,"g":-2.17,"s110":1934,"s115":1895,"sDiff":-39,"sG":-2.02,"g0_5":-26.2,"g6_11":9.7,"oldPct":21.9,"sShare":6.8,"medInc":400,"avgInc":607},{"code":"10002050","name":"宜蘭縣礁溪鄉","county":"宜蘭縣","town":"礁溪鄉","t110":35057,"t114":36629,"t115":36514,"diff":1457,"g":4.16,"s110":2272,"s115":2032,"sDiff":-240,"sG":-10.56,"g0_5":-22,"g6_11":-6.2,"oldPct":22.4,"sShare":5.6,"medInc":434,"avgInc":664},{"code":"10002060","name":"宜蘭縣壯圍鄉","county":"宜蘭縣","town":"壯圍鄉","t110":24391,"t114":24479,"t115":24562,"diff":171,"g":0.7,"s110":1330,"s115":1325,"sDiff":-5,"sG":-0.38,"g0_5":-8.5,"g6_11":2.6,"oldPct":21.4,"sShare":5.4,"medInc":433,"avgInc":615},{"code":"10002070","name":"宜蘭縣員山鄉","county":"宜蘭縣","town":"員山鄉","t110":32056,"t114":32226,"t115":32293,"diff":237,"g":0.74,"s110":1890,"s115":1768,"sDiff":-122,"sG":-6.46,"g0_5":-20.2,"g6_11":1.3,"oldPct":21,"sShare":5.5,"medInc":415,"avgInc":636},{"code":"10002080","name":"宜蘭縣冬山鄉","county":"宜蘭縣","town":"冬山鄉","t110":52928,"t114":52938,"t115":52878,"diff":-50,"g":-0.09,"s110":3972,"s115":3593,"sDiff":-379,"sG":-9.54,"g0_5":-29.9,"g6_11":-2.8,"oldPct":21.5,"sShare":6.8,"medInc":449,"avgInc":666},{"code":"10002090","name":"宜蘭縣五結鄉","county":"宜蘭縣","town":"五結鄉","t110":40539,"t114":41737,"t115":41718,"diff":1179,"g":2.91,"s110":2468,"s115":2324,"sDiff":-144,"sG":-5.83,"g0_5":-22.1,"g6_11":0.8,"oldPct":20.4,"sShare":5.6,"medInc":461,"avgInc":659},{"code":"10002100","name":"宜蘭縣三星鄉","county":"宜蘭縣","town":"三星鄉","t110":21206,"t114":21356,"t115":21507,"diff":301,"g":1.42,"s110":1099,"s115":1060,"sDiff":-39,"sG":-3.55,"g0_5":-17.7,"g6_11":0.4,"oldPct":23.7,"sShare":4.9,"medInc":425,"avgInc":655},{"code":"10002110","name":"宜蘭縣大同鄉","county":"宜蘭縣","town":"大同鄉","t110":6088,"t114":5998,"t115":6039,"diff":-49,"g":-0.8,"s110":644,"s115":592,"sDiff":-52,"sG":-8.07,"g0_5":-18.7,"g6_11":-1.4,"oldPct":15,"sShare":9.8,"medInc":426,"avgInc":541},{"code":"10002120","name":"宜蘭縣南澳鄉","county":"宜蘭縣","town":"南澳鄉","t110":6010,"t114":6171,"t115":6224,"diff":214,"g":3.56,"s110":745,"s115":703,"sDiff":-42,"sG":-5.64,"g0_5":-1.2,"g6_11":-7.7,"oldPct":14.7,"sShare":11.3,"medInc":426,"avgInc":494},{"code":"10004010","name":"新竹縣竹北市","county":"新竹縣","town":"竹北市","t110":206189,"t114":220973,"t115":221344,"diff":15155,"g":7.35,"s110":32661,"s115":30787,"sDiff":-1874,"sG":-5.74,"g0_5":-23.2,"g6_11":-3.1,"oldPct":10.3,"sShare":13.9,"medInc":1222,"avgInc":2057},{"code":"10004020","name":"新竹縣竹東鎮","county":"新竹縣","town":"竹東鎮","t110":96590,"t114":97894,"t115":97471,"diff":881,"g":0.91,"s110":9124,"s115":8671,"sDiff":-453,"sG":-4.96,"g0_5":-18.8,"g6_11":-1,"oldPct":17.6,"sShare":8.9,"medInc":561,"avgInc":1073},{"code":"10004030","name":"新竹縣新埔鎮","county":"新竹縣","town":"新埔鎮","t110":32975,"t114":33561,"t115":33202,"diff":227,"g":0.69,"s110":1934,"s115":1653,"sDiff":-281,"sG":-14.53,"g0_5":-28.1,"g6_11":-11.2,"oldPct":23.4,"sShare":5,"medInc":518,"avgInc":895},{"code":"10004040","name":"新竹縣關西鎮","county":"新竹縣","town":"關西鎮","t110":27377,"t114":26011,"t115":27018,"diff":-359,"g":-1.31,"s110":1653,"s115":1576,"sDiff":-77,"sG":-4.66,"g0_5":-24.1,"g6_11":-1,"oldPct":24.2,"sShare":5.8,"medInc":468,"avgInc":691},{"code":"10004050","name":"新竹縣湖口鄉","county":"新竹縣","town":"湖口鄉","t110":79602,"t114":84963,"t115":85133,"diff":5531,"g":6.95,"s110":7669,"s115":8041,"sDiff":372,"sG":4.85,"g0_5":-1.8,"g6_11":3.5,"oldPct":15.8,"sShare":9.4,"medInc":499,"avgInc":743},{"code":"10004060","name":"新竹縣新豐鄉","county":"新竹縣","town":"新豐鄉","t110":57908,"t114":59839,"t115":60206,"diff":2298,"g":3.97,"s110":6476,"s115":5892,"sDiff":-584,"sG":-9.02,"g0_5":-21,"g6_11":-6.6,"oldPct":14.9,"sShare":9.8,"medInc":487,"avgInc":823},{"code":"10004070","name":"新竹縣芎林鄉","county":"新竹縣","town":"芎林鄉","t110":19936,"t114":20385,"t115":20305,"diff":369,"g":1.85,"s110":1132,"s115":1059,"sDiff":-73,"sG":-6.45,"g0_5":-17.3,"g6_11":-7,"oldPct":21.8,"sShare":5.2,"medInc":526,"avgInc":1005},{"code":"10004080","name":"新竹縣橫山鄉","county":"新竹縣","town":"橫山鄉","t110":12343,"t114":11901,"t115":11944,"diff":-399,"g":-3.23,"s110":734,"s115":622,"sDiff":-112,"sG":-15.26,"g0_5":-22.2,"g6_11":-9.6,"oldPct":26.6,"sShare":5.2,"medInc":460,"avgInc":674},{"code":"10004090","name":"新竹縣北埔鄉","county":"新竹縣","town":"北埔鄉","t110":8797,"t114":8289,"t115":8200,"diff":-597,"g":-6.79,"s110":478,"s115":423,"sDiff":-55,"sG":-11.51,"g0_5":-29.6,"g6_11":-10.7,"oldPct":26.4,"sShare":5.2,"medInc":456,"avgInc":700},{"code":"10004100","name":"新竹縣寶山鄉","county":"新竹縣","town":"寶山鄉","t110":14504,"t114":14588,"t115":14559,"diff":55,"g":0.38,"s110":746,"s115":615,"sDiff":-131,"sG":-17.56,"g0_5":-22.8,"g6_11":-9.6,"oldPct":20.3,"sShare":4.2,"medInc":623,"avgInc":1472},{"code":"10004110","name":"新竹縣峨眉鄉","county":"新竹縣","town":"峨眉鄉","t110":5309,"t114":4970,"t115":4907,"diff":-402,"g":-7.57,"s110":227,"s115":199,"sDiff":-28,"sG":-12.33,"g0_5":-36.6,"g6_11":6.3,"oldPct":31.8,"sShare":4.1,"medInc":460,"avgInc":708},{"code":"10004120","name":"新竹縣尖石鄉","county":"新竹縣","town":"尖石鄉","t110":9577,"t114":9464,"t115":9545,"diff":-32,"g":-0.33,"s110":1182,"s115":1081,"sDiff":-101,"sG":-8.54,"g0_5":-14.5,"g6_11":-4.6,"oldPct":12.1,"sShare":11.3,"medInc":402,"avgInc":565},{"code":"10004130","name":"新竹縣五峰鄉","county":"新竹縣","town":"五峰鄉","t110":4473,"t114":4397,"t115":4395,"diff":-78,"g":-1.74,"s110":368,"s115":348,"sDiff":-20,"sG":-5.43,"g0_5":-19,"g6_11":-8.3,"oldPct":16.9,"sShare":7.9,"medInc":384,"avgInc":499},{"code":"10005010","name":"苗栗縣苗栗市","county":"苗栗縣","town":"苗栗市","t110":86939,"t114":85838,"t115":85243,"diff":-1696,"g":-1.95,"s110":7479,"s115":6880,"sDiff":-599,"sG":-8.01,"g0_5":-25.1,"g6_11":-3.3,"oldPct":22.3,"sShare":8.1,"medInc":531,"avgInc":773},{"code":"10005020","name":"苗栗縣苑裡鎮","county":"苗栗縣","town":"苑裡鎮","t110":44256,"t114":43237,"t115":42871,"diff":-1385,"g":-3.13,"s110":3103,"s115":2937,"sDiff":-166,"sG":-5.35,"g0_5":-13,"g6_11":-2.4,"oldPct":20.7,"sShare":6.9,"medInc":397,"avgInc":617},{"code":"10005030","name":"苗栗縣通霄鎮","county":"苗栗縣","town":"通霄鎮","t110":32441,"t114":30618,"t115":30461,"diff":-1980,"g":-6.1,"s110":1929,"s115":1615,"sDiff":-314,"sG":-16.28,"g0_5":-11.6,"g6_11":-8.5,"oldPct":25.5,"sShare":5.3,"medInc":399,"avgInc":588},{"code":"10005040","name":"苗栗縣竹南鎮","county":"苗栗縣","town":"竹南鎮","t110":87365,"t114":91538,"t115":91602,"diff":4237,"g":4.85,"s110":10252,"s115":9567,"sDiff":-685,"sG":-6.68,"g0_5":-18.9,"g6_11":-4.8,"oldPct":15.4,"sShare":10.4,"medInc":585,"avgInc":947},{"code":"10005050","name":"苗栗縣頭份市","county":"苗栗縣","town":"頭份市","t110":105084,"t114":108231,"t115":108280,"diff":3196,"g":3.04,"s110":11160,"s115":10293,"sDiff":-867,"sG":-7.77,"g0_5":-18.1,"g6_11":-4.2,"oldPct":16.3,"sShare":9.5,"medInc":559,"avgInc":900},{"code":"10005060","name":"苗栗縣後龍鎮","county":"苗栗縣","town":"後龍鎮","t110":34694,"t114":33531,"t115":33342,"diff":-1352,"g":-3.9,"s110":2408,"s115":2105,"sDiff":-303,"sG":-12.58,"g0_5":-28,"g6_11":-6.2,"oldPct":22,"sShare":6.3,"medInc":459,"avgInc":682},{"code":"10005070","name":"苗栗縣卓蘭鎮","county":"苗栗縣","town":"卓蘭鎮","t110":15866,"t114":14483,"t115":14286,"diff":-1580,"g":-9.96,"s110":928,"s115":752,"sDiff":-176,"sG":-18.97,"g0_5":-33.5,"g6_11":-13.7,"oldPct":28.5,"sShare":5.3,"medInc":417,"avgInc":601},{"code":"10005080","name":"苗栗縣大湖鄉","county":"苗栗縣","town":"大湖鄉","t110":13530,"t114":12310,"t115":12094,"diff":-1436,"g":-10.61,"s110":717,"s115":593,"sDiff":-124,"sG":-17.29,"g0_5":-38.7,"g6_11":-10.3,"oldPct":27.3,"sShare":4.9,"medInc":421,"avgInc":578},{"code":"10005090","name":"苗栗縣公館鄉","county":"苗栗縣","town":"公館鄉","t110":31867,"t114":30461,"t115":30218,"diff":-1649,"g":-5.17,"s110":2444,"s115":2026,"sDiff":-418,"sG":-17.1,"g0_5":-34.4,"g6_11":-11.5,"oldPct":23.5,"sShare":6.7,"medInc":474,"avgInc":677},{"code":"10005100","name":"苗栗縣銅鑼鄉","county":"苗栗縣","town":"銅鑼鄉","t110":16871,"t114":16079,"t115":16123,"diff":-748,"g":-4.43,"s110":1105,"s115":1011,"sDiff":-94,"sG":-8.51,"g0_5":-28.3,"g6_11":-2.1,"oldPct":25,"sShare":6.3,"medInc":451,"avgInc":611},{"code":"10005110","name":"苗栗縣南庄鄉","county":"苗栗縣","town":"南庄鄉","t110":9328,"t114":8576,"t115":8553,"diff":-775,"g":-8.31,"s110":515,"s115":403,"sDiff":-112,"sG":-21.75,"g0_5":-9.6,"g6_11":-17,"oldPct":27.2,"sShare":4.7,"medInc":397,"avgInc":607},{"code":"10005120","name":"苗栗縣頭屋鄉","county":"苗栗縣","town":"頭屋鄉","t110":10026,"t114":9354,"t115":9337,"diff":-689,"g":-6.87,"s110":498,"s115":366,"sDiff":-132,"sG":-26.51,"g0_5":-31.1,"g6_11":-23.9,"oldPct":27.2,"sShare":3.9,"medInc":465,"avgInc":658},{"code":"10005130","name":"苗栗縣三義鄉","county":"苗栗縣","town":"三義鄉","t110":15388,"t114":14485,"t115":14332,"diff":-1056,"g":-6.86,"s110":1063,"s115":924,"sDiff":-139,"sG":-13.08,"g0_5":-24,"g6_11":-10.1,"oldPct":24.1,"sShare":6.4,"medInc":427,"avgInc":597},{"code":"10005140","name":"苗栗縣西湖鄉","county":"苗栗縣","town":"西湖鄉","t110":6558,"t114":5875,"t115":5822,"diff":-736,"g":-11.22,"s110":243,"s115":162,"sDiff":-81,"sG":-33.33,"g0_5":-21.3,"g6_11":-38.3,"oldPct":30.1,"sShare":2.8,"medInc":448,"avgInc":633},{"code":"10005150","name":"苗栗縣造橋鄉","county":"苗栗縣","town":"造橋鄉","t110":11956,"t114":11548,"t115":11463,"diff":-493,"g":-4.12,"s110":715,"s115":572,"sDiff":-143,"sG":-20,"g0_5":-39.1,"g6_11":-12.9,"oldPct":25,"sShare":5,"medInc":468,"avgInc":639},{"code":"10005160","name":"苗栗縣三灣鄉","county":"苗栗縣","town":"三灣鄉","t110":6201,"t114":5664,"t115":5664,"diff":-537,"g":-8.66,"s110":347,"s115":321,"sDiff":-26,"sG":-7.49,"g0_5":-39,"g6_11":1.4,"oldPct":28,"sShare":5.7,"medInc":419,"avgInc":712},{"code":"10005170","name":"苗栗縣獅潭鄉","county":"苗栗縣","town":"獅潭鄉","t110":4117,"t114":3943,"t115":3906,"diff":-211,"g":-5.13,"s110":161,"s115":133,"sDiff":-28,"sG":-17.39,"g0_5":-16.5,"g6_11":-7.5,"oldPct":32.3,"sShare":3.4,"medInc":429,"avgInc":612},{"code":"10005180","name":"苗栗縣泰安鄉","county":"苗栗縣","town":"泰安鄉","t110":5691,"t114":5401,"t115":5415,"diff":-276,"g":-4.85,"s110":424,"s115":323,"sDiff":-101,"sG":-23.82,"g0_5":-2.8,"g6_11":-20.9,"oldPct":19.1,"sShare":6,"medInc":453,"avgInc":582},{"code":"10007010","name":"彰化縣彰化市","county":"彰化縣","town":"彰化市","t110":228470,"t114":220487,"t115":218437,"diff":-10033,"g":-4.39,"s110":21814,"s115":19257,"sDiff":-2557,"sG":-11.72,"g0_5":-32.6,"g6_11":-8.5,"oldPct":21.3,"sShare":8.8,"medInc":486,"avgInc":770},{"code":"10007020","name":"彰化縣鹿港鎮","county":"彰化縣","town":"鹿港鎮","t110":85837,"t114":82212,"t115":81543,"diff":-4294,"g":-5,"s110":8520,"s115":7370,"sDiff":-1150,"sG":-13.5,"g0_5":-32.3,"g6_11":-9.3,"oldPct":19.4,"sShare":9,"medInc":416,"avgInc":677},{"code":"10007030","name":"彰化縣和美鎮","county":"彰化縣","town":"和美鎮","t110":89558,"t114":86635,"t115":85926,"diff":-3632,"g":-4.06,"s110":7688,"s115":6454,"sDiff":-1234,"sG":-16.05,"g0_5":-33.1,"g6_11":-10.6,"oldPct":19,"sShare":7.5,"medInc":430,"avgInc":667},{"code":"10007040","name":"彰化縣線西鄉","county":"彰化縣","town":"線西鄉","t110":16486,"t114":16014,"t115":16020,"diff":-466,"g":-2.83,"s110":1277,"s115":1133,"sDiff":-144,"sG":-11.28,"g0_5":-30,"g6_11":-6.9,"oldPct":20.1,"sShare":7.1,"medInc":428,"avgInc":610},{"code":"10007050","name":"彰化縣伸港鄉","county":"彰化縣","town":"伸港鄉","t110":37838,"t114":38146,"t115":37894,"diff":56,"g":0.15,"s110":3444,"s115":3339,"sDiff":-105,"sG":-3.05,"g0_5":-17.4,"g6_11":-1,"oldPct":17.4,"sShare":8.8,"medInc":403,"avgInc":599},{"code":"10007060","name":"彰化縣福興鄉","county":"彰化縣","town":"福興鄉","t110":45956,"t114":44284,"t115":43881,"diff":-2075,"g":-4.52,"s110":3280,"s115":2905,"sDiff":-375,"sG":-11.43,"g0_5":-24.7,"g6_11":-9.4,"oldPct":20.2,"sShare":6.6,"medInc":402,"avgInc":622},{"code":"10007070","name":"彰化縣秀水鄉","county":"彰化縣","town":"秀水鄉","t110":38633,"t114":37356,"t115":37065,"diff":-1568,"g":-4.06,"s110":3282,"s115":2828,"sDiff":-454,"sG":-13.83,"g0_5":-24.1,"g6_11":-9,"oldPct":19.4,"sShare":7.6,"medInc":422,"avgInc":652},{"code":"10007080","name":"彰化縣花壇鄉","county":"彰化縣","town":"花壇鄉","t110":44795,"t114":42816,"t115":43029,"diff":-1766,"g":-3.94,"s110":3092,"s115":2759,"sDiff":-333,"sG":-10.77,"g0_5":-31.7,"g6_11":-5.4,"oldPct":20.4,"sShare":6.4,"medInc":419,"avgInc":653},{"code":"10007090","name":"彰化縣芬園鄉","county":"彰化縣","town":"芬園鄉","t110":22827,"t114":21334,"t115":21096,"diff":-1731,"g":-7.58,"s110":1401,"s115":1160,"sDiff":-241,"sG":-17.2,"g0_5":-37.3,"g6_11":-7.9,"oldPct":23.6,"sShare":5.5,"medInc":388,"avgInc":571},{"code":"10007100","name":"彰化縣員林市","county":"彰化縣","town":"員林市","t110":122757,"t114":122148,"t115":121520,"diff":-1237,"g":-1.01,"s110":11923,"s115":11585,"sDiff":-338,"sG":-2.83,"g0_5":-22.1,"g6_11":0.8,"oldPct":20,"sShare":9.5,"medInc":481,"avgInc":745},{"code":"10007110","name":"彰化縣溪湖鎮","county":"彰化縣","town":"溪湖鎮","t110":54340,"t114":52832,"t115":52494,"diff":-1846,"g":-3.4,"s110":5322,"s115":5068,"sDiff":-254,"sG":-4.77,"g0_5":-21.7,"g6_11":-0.2,"oldPct":19.1,"sShare":9.7,"medInc":446,"avgInc":648},{"code":"10007120","name":"彰化縣田中鎮","county":"彰化縣","town":"田中鎮","t110":40123,"t114":38273,"t115":37949,"diff":-2174,"g":-5.42,"s110":2816,"s115":2375,"sDiff":-441,"sG":-15.66,"g0_5":-26.9,"g6_11":-13.7,"oldPct":23.5,"sShare":6.3,"medInc":434,"avgInc":613},{"code":"10007130","name":"彰化縣大村鄉","county":"彰化縣","town":"大村鄉","t110":39835,"t114":38919,"t115":38393,"diff":-1442,"g":-3.62,"s110":3144,"s115":2586,"sDiff":-558,"sG":-17.75,"g0_5":-29.9,"g6_11":-13.7,"oldPct":19,"sShare":6.7,"medInc":429,"avgInc":619},{"code":"10007140","name":"彰化縣埔鹽鄉","county":"彰化縣","town":"埔鹽鄉","t110":31682,"t114":30041,"t115":29722,"diff":-1960,"g":-6.19,"s110":1893,"s115":1638,"sDiff":-255,"sG":-13.47,"g0_5":-33.7,"g6_11":-5.5,"oldPct":22.4,"sShare":5.5,"medInc":401,"avgInc":619},{"code":"10007150","name":"彰化縣埔心鄉","county":"彰化縣","town":"埔心鄉","t110":34037,"t114":33082,"t115":32862,"diff":-1175,"g":-3.45,"s110":2243,"s115":1958,"sDiff":-285,"sG":-12.71,"g0_5":-29.2,"g6_11":-7.1,"oldPct":20.1,"sShare":6,"medInc":416,"avgInc":615},{"code":"10007160","name":"彰化縣永靖鄉","county":"彰化縣","town":"永靖鄉","t110":35879,"t114":34177,"t115":33926,"diff":-1953,"g":-5.44,"s110":2601,"s115":2340,"sDiff":-261,"sG":-10.03,"g0_5":-27.2,"g6_11":-10.3,"oldPct":21.7,"sShare":6.9,"medInc":401,"avgInc":612},{"code":"10007170","name":"彰化縣社頭鄉","county":"彰化縣","town":"社頭鄉","t110":42026,"t114":40272,"t115":39994,"diff":-2032,"g":-4.84,"s110":3144,"s115":2761,"sDiff":-383,"sG":-12.18,"g0_5":-30.2,"g6_11":-4.9,"oldPct":21.5,"sShare":6.9,"medInc":408,"avgInc":606},{"code":"10007180","name":"彰化縣二水鄉","county":"彰化縣","town":"二水鄉","t110":14377,"t114":13220,"t115":13047,"diff":-1330,"g":-9.25,"s110":767,"s115":589,"sDiff":-178,"sG":-23.21,"g0_5":-45.7,"g6_11":-12.4,"oldPct":28.6,"sShare":4.5,"medInc":428,"avgInc":595},{"code":"10007190","name":"彰化縣北斗鎮","county":"彰化縣","town":"北斗鎮","t110":33303,"t114":33099,"t115":32900,"diff":-403,"g":-1.21,"s110":2985,"s115":3002,"sDiff":17,"sG":0.57,"g0_5":-22.9,"g6_11":1.7,"oldPct":20.5,"sShare":9.1,"medInc":433,"avgInc":668},{"code":"10007200","name":"彰化縣二林鎮","county":"彰化縣","town":"二林鎮","t110":49082,"t114":46419,"t115":45869,"diff":-3213,"g":-6.55,"s110":3465,"s115":2587,"sDiff":-878,"sG":-25.34,"g0_5":-31.7,"g6_11":-24,"oldPct":23.5,"sShare":5.6,"medInc":438,"avgInc":634},{"code":"10007210","name":"彰化縣田尾鄉","county":"彰化縣","town":"田尾鄉","t110":26407,"t114":25251,"t115":24920,"diff":-1487,"g":-5.63,"s110":1775,"s115":1523,"sDiff":-252,"sG":-14.2,"g0_5":-27.8,"g6_11":-12.1,"oldPct":21.5,"sShare":6.1,"medInc":410,"avgInc":606},{"code":"10007220","name":"彰化縣埤頭鄉","county":"彰化縣","town":"埤頭鄉","t110":29706,"t114":27997,"t115":27630,"diff":-2076,"g":-6.99,"s110":2250,"s115":1757,"sDiff":-493,"sG":-21.91,"g0_5":-37.1,"g6_11":-16.3,"oldPct":22.9,"sShare":6.4,"medInc":423,"avgInc":630},{"code":"10007230","name":"彰化縣芳苑鄉","county":"彰化縣","town":"芳苑鄉","t110":32110,"t114":29880,"t115":29524,"diff":-2586,"g":-8.05,"s110":1803,"s115":1566,"sDiff":-237,"sG":-13.14,"g0_5":-33.3,"g6_11":-8.6,"oldPct":25.4,"sShare":5.3,"medInc":390,"avgInc":568},{"code":"10007240","name":"彰化縣大城鄉","county":"彰化縣","town":"大城鄉","t110":15733,"t114":14146,"t115":13999,"diff":-1734,"g":-11.02,"s110":733,"s115":569,"sDiff":-164,"sG":-22.37,"g0_5":-24.2,"g6_11":-25.8,"oldPct":28.4,"sShare":4.1,"medInc":405,"avgInc":588},{"code":"10007250","name":"彰化縣竹塘鄉","county":"彰化縣","town":"竹塘鄉","t110":14584,"t114":13918,"t115":13874,"diff":-710,"g":-4.87,"s110":992,"s115":1321,"sDiff":329,"sG":33.17,"g0_5":-28.8,"g6_11":57.2,"oldPct":26.1,"sShare":9.5,"medInc":440,"avgInc":616},{"code":"10007260","name":"彰化縣溪州鄉","county":"彰化縣","town":"溪州鄉","t110":28949,"t114":27248,"t115":26933,"diff":-2016,"g":-6.96,"s110":1785,"s115":1522,"sDiff":-263,"sG":-14.73,"g0_5":-29.7,"g6_11":-10.5,"oldPct":23.7,"sShare":5.7,"medInc":415,"avgInc":613},{"code":"10008010","name":"南投縣南投市","county":"南投縣","town":"南投市","t110":98244,"t114":96229,"t115":95429,"diff":-2815,"g":-2.87,"s110":8058,"s115":7530,"sDiff":-528,"sG":-6.55,"g0_5":-23.4,"g6_11":-4,"oldPct":22.2,"sShare":7.9,"medInc":453,"avgInc":688},{"code":"10008020","name":"南投縣埔里鎮","county":"南投縣","town":"埔里鎮","t110":78107,"t114":75613,"t115":75615,"diff":-2492,"g":-3.19,"s110":5660,"s115":5361,"sDiff":-299,"sG":-5.28,"g0_5":-13.3,"g6_11":-1.4,"oldPct":23.5,"sShare":7.1,"medInc":411,"avgInc":600},{"code":"10008030","name":"南投縣草屯鎮","county":"南投縣","town":"草屯鎮","t110":96923,"t114":97724,"t115":98247,"diff":1324,"g":1.37,"s110":7288,"s115":7625,"sDiff":337,"sG":4.62,"g0_5":9.6,"g6_11":0.9,"oldPct":21.3,"sShare":7.8,"medInc":452,"avgInc":675},{"code":"10008040","name":"南投縣竹山鎮","county":"南投縣","town":"竹山鎮","t110":52629,"t114":49905,"t115":49392,"diff":-3237,"g":-6.15,"s110":3527,"s115":3000,"sDiff":-527,"sG":-14.94,"g0_5":-34.8,"g6_11":-9.3,"oldPct":24.8,"sShare":6.1,"medInc":435,"avgInc":599},{"code":"10008050","name":"南投縣集集鎮","county":"南投縣","town":"集集鎮","t110":10227,"t114":9882,"t115":10290,"diff":63,"g":0.62,"s110":550,"s115":587,"sDiff":37,"sG":6.73,"g0_5":-5.6,"g6_11":14.8,"oldPct":24.8,"sShare":5.7,"medInc":440,"avgInc":633},{"code":"10008060","name":"南投縣名間鄉","county":"南投縣","town":"名間鄉","t110":36925,"t114":34557,"t115":34074,"diff":-2851,"g":-7.72,"s110":2123,"s115":1785,"sDiff":-338,"sG":-15.92,"g0_5":-37.3,"g6_11":-12.3,"oldPct":25,"sShare":5.2,"medInc":396,"avgInc":564},{"code":"10008070","name":"南投縣鹿谷鄉","county":"南投縣","town":"鹿谷鄉","t110":16850,"t114":15454,"t115":15293,"diff":-1557,"g":-9.24,"s110":799,"s115":633,"sDiff":-166,"sG":-20.78,"g0_5":-41.9,"g6_11":-8.1,"oldPct":31.1,"sShare":4.1,"medInc":433,"avgInc":624},{"code":"10008080","name":"南投縣中寮鄉","county":"南投縣","town":"中寮鄉","t110":14013,"t114":12825,"t115":12750,"diff":-1263,"g":-9.01,"s110":675,"s115":531,"sDiff":-144,"sG":-21.33,"g0_5":-27.7,"g6_11":-21.8,"oldPct":29,"sShare":4.2,"medInc":363,"avgInc":543},{"code":"10008090","name":"南投縣魚池鄉","county":"南投縣","town":"魚池鄉","t110":15162,"t114":14098,"t115":13945,"diff":-1217,"g":-8.03,"s110":814,"s115":705,"sDiff":-109,"sG":-13.39,"g0_5":-39.2,"g6_11":-3.7,"oldPct":26.9,"sShare":5.1,"medInc":373,"avgInc":559},{"code":"10008100","name":"南投縣國姓鄉","county":"南投縣","town":"國姓鄉","t110":17557,"t114":15963,"t115":15724,"diff":-1833,"g":-10.44,"s110":867,"s115":621,"sDiff":-246,"sG":-28.37,"g0_5":-49.7,"g6_11":-19.6,"oldPct":27.8,"sShare":3.9,"medInc":375,"avgInc":525},{"code":"10008110","name":"南投縣水里鄉","county":"南投縣","town":"水里鄉","t110":16665,"t114":15452,"t115":15279,"diff":-1386,"g":-8.32,"s110":911,"s115":871,"sDiff":-40,"sG":-4.39,"g0_5":-38.2,"g6_11":1.2,"oldPct":29.3,"sShare":5.7,"medInc":414,"avgInc":574},{"code":"10008120","name":"南投縣信義鄉","county":"南投縣","town":"信義鄉","t110":15785,"t114":14886,"t115":14761,"diff":-1024,"g":-6.49,"s110":1521,"s115":1282,"sDiff":-239,"sG":-15.71,"g0_5":-22.7,"g6_11":-14.7,"oldPct":17.3,"sShare":8.7,"medInc":436,"avgInc":545},{"code":"10008130","name":"南投縣仁愛鄉","county":"南投縣","town":"仁愛鄉","t110":15810,"t114":15293,"t115":15185,"diff":-625,"g":-3.95,"s110":1871,"s115":1471,"sDiff":-400,"sG":-21.38,"g0_5":-32.8,"g6_11":-15.3,"oldPct":16.1,"sShare":9.7,"medInc":408,"avgInc":552},{"code":"10009010","name":"雲林縣斗六市","county":"雲林縣","town":"斗六市","t110":108100,"t114":109030,"t115":108982,"diff":882,"g":0.82,"s110":9965,"s115":9787,"sDiff":-178,"sG":-1.79,"g0_5":-13.5,"g6_11":1,"oldPct":18.9,"sShare":9,"medInc":469,"avgInc":737},{"code":"10009020","name":"雲林縣斗南鎮","county":"雲林縣","town":"斗南鎮","t110":43584,"t114":43322,"t115":43125,"diff":-459,"g":-1.05,"s110":3116,"s115":2981,"sDiff":-135,"sG":-4.33,"g0_5":-5.5,"g6_11":-0.8,"oldPct":22.1,"sShare":6.9,"medInc":472,"avgInc":678},{"code":"10009030","name":"雲林縣虎尾鎮","county":"雲林縣","town":"虎尾鎮","t110":70648,"t114":71349,"t115":71163,"diff":515,"g":0.73,"s110":6667,"s115":6341,"sDiff":-326,"sG":-4.89,"g0_5":-12.4,"g6_11":-0.8,"oldPct":18.9,"sShare":8.9,"medInc":554,"avgInc":790},{"code":"10009040","name":"雲林縣西螺鎮","county":"雲林縣","town":"西螺鎮","t110":45029,"t114":43975,"t115":43626,"diff":-1403,"g":-3.12,"s110":3790,"s115":3441,"sDiff":-349,"sG":-9.21,"g0_5":-11,"g6_11":-8.4,"oldPct":21.3,"sShare":7.9,"medInc":474,"avgInc":676},{"code":"10009050","name":"雲林縣土庫鎮","county":"雲林縣","town":"土庫鎮","t110":27938,"t114":27234,"t115":27012,"diff":-926,"g":-3.31,"s110":2048,"s115":1908,"sDiff":-140,"sG":-6.84,"g0_5":-9.4,"g6_11":-4.3,"oldPct":22.8,"sShare":7.1,"medInc":455,"avgInc":673},{"code":"10009060","name":"雲林縣北港鎮","county":"雲林縣","town":"北港鎮","t110":38437,"t114":37053,"t115":36568,"diff":-1869,"g":-4.86,"s110":2862,"s115":2588,"sDiff":-274,"sG":-9.57,"g0_5":-14.7,"g6_11":-1.4,"oldPct":23.4,"sShare":7.1,"medInc":505,"avgInc":709},{"code":"10009070","name":"雲林縣古坑鄉","county":"雲林縣","town":"古坑鄉","t110":30438,"t114":29193,"t115":28770,"diff":-1668,"g":-5.48,"s110":1764,"s115":1370,"sDiff":-394,"sG":-22.34,"g0_5":-23.9,"g6_11":-20,"oldPct":25.3,"sShare":4.8,"medInc":407,"avgInc":583},{"code":"10009080","name":"雲林縣大埤鄉","county":"雲林縣","town":"大埤鄉","t110":18451,"t114":17521,"t115":17288,"diff":-1163,"g":-6.3,"s110":1064,"s115":926,"sDiff":-138,"sG":-12.97,"g0_5":-16.6,"g6_11":-10.4,"oldPct":24.6,"sShare":5.4,"medInc":404,"avgInc":606},{"code":"10009090","name":"雲林縣莿桐鄉","county":"雲林縣","town":"莿桐鄉","t110":27970,"t114":27201,"t115":27008,"diff":-962,"g":-3.44,"s110":1927,"s115":1697,"sDiff":-230,"sG":-11.94,"g0_5":-11,"g6_11":-7.1,"oldPct":22.9,"sShare":6.3,"medInc":428,"avgInc":595},{"code":"10009100","name":"雲林縣林內鄉","county":"雲林縣","town":"林內鄉","t110":17131,"t114":16285,"t115":16230,"diff":-901,"g":-5.26,"s110":1086,"s115":1006,"sDiff":-80,"sG":-7.37,"g0_5":-16.5,"g6_11":-10.8,"oldPct":23.4,"sShare":6.2,"medInc":385,"avgInc":542},{"code":"10009110","name":"雲林縣二崙鄉","county":"雲林縣","town":"二崙鄉","t110":25660,"t114":24165,"t115":23828,"diff":-1832,"g":-7.14,"s110":1442,"s115":1182,"sDiff":-260,"sG":-18.03,"g0_5":-17.7,"g6_11":-19.2,"oldPct":26.9,"sShare":5,"medInc":448,"avgInc":650},{"code":"10009120","name":"雲林縣崙背鄉","county":"雲林縣","town":"崙背鄉","t110":23584,"t114":22255,"t115":22014,"diff":-1570,"g":-6.66,"s110":1580,"s115":1381,"sDiff":-199,"sG":-12.59,"g0_5":-27.4,"g6_11":-3.7,"oldPct":25.7,"sShare":6.3,"medInc":483,"avgInc":705},{"code":"10009130","name":"雲林縣麥寮鄉","county":"雲林縣","town":"麥寮鄉","t110":48695,"t114":48815,"t115":48215,"diff":-480,"g":-0.99,"s110":4598,"s115":4068,"sDiff":-530,"sG":-11.53,"g0_5":-9.5,"g6_11":-13.5,"oldPct":15.4,"sShare":8.4,"medInc":531,"avgInc":758},{"code":"10009140","name":"雲林縣東勢鄉","county":"雲林縣","town":"東勢鄉","t110":13849,"t114":12885,"t115":12747,"diff":-1102,"g":-7.96,"s110":650,"s115":522,"sDiff":-128,"sG":-19.69,"g0_5":-13.4,"g6_11":-14.5,"oldPct":28.2,"sShare":4.1,"medInc":476,"avgInc":657},{"code":"10009150","name":"雲林縣褒忠鄉","county":"雲林縣","town":"褒忠鄉","t110":12279,"t114":11490,"t115":11413,"diff":-866,"g":-7.05,"s110":711,"s115":585,"sDiff":-126,"sG":-17.72,"g0_5":-6.6,"g6_11":-17.8,"oldPct":26.2,"sShare":5.1,"medInc":472,"avgInc":672},{"code":"10009160","name":"雲林縣臺西鄉","county":"雲林縣","town":"臺西鄉","t110":22558,"t114":20778,"t115":20415,"diff":-2143,"g":-9.5,"s110":1165,"s115":864,"sDiff":-301,"sG":-25.84,"g0_5":-18.5,"g6_11":-22,"oldPct":24.8,"sShare":4.2,"medInc":525,"avgInc":673},{"code":"10009170","name":"雲林縣元長鄉","county":"雲林縣","town":"元長鄉","t110":24177,"t114":22478,"t115":22268,"diff":-1909,"g":-7.9,"s110":1278,"s115":974,"sDiff":-304,"sG":-23.79,"g0_5":-16.9,"g6_11":-24.9,"oldPct":29.4,"sShare":4.4,"medInc":431,"avgInc":631},{"code":"10009180","name":"雲林縣四湖鄉","county":"雲林縣","town":"四湖鄉","t110":21891,"t114":20210,"t115":19948,"diff":-1943,"g":-8.88,"s110":890,"s115":784,"sDiff":-106,"sG":-11.91,"g0_5":-3.6,"g6_11":-8.7,"oldPct":26.7,"sShare":3.9,"medInc":452,"avgInc":641},{"code":"10009190","name":"雲林縣口湖鄉","county":"雲林縣","town":"口湖鄉","t110":25976,"t114":23945,"t115":23740,"diff":-2236,"g":-8.61,"s110":1341,"s115":1063,"sDiff":-278,"sG":-20.73,"g0_5":-13,"g6_11":-18.1,"oldPct":24.4,"sShare":4.5,"medInc":433,"avgInc":623},{"code":"10009200","name":"雲林縣水林鄉","county":"雲林縣","town":"水林鄉","t110":23737,"t114":21805,"t115":21521,"diff":-2216,"g":-9.34,"s110":1063,"s115":893,"sDiff":-170,"sG":-15.99,"g0_5":-4.1,"g6_11":-16.5,"oldPct":29.2,"sShare":4.1,"medInc":444,"avgInc":626},{"code":"10010010","name":"嘉義縣太保市","county":"嘉義縣","town":"太保市","t110":38571,"t114":39923,"t115":39642,"diff":1071,"g":2.78,"s110":3213,"s115":3273,"sDiff":60,"sG":1.87,"g0_5":-17.6,"g6_11":7,"oldPct":17.1,"sShare":8.3,"medInc":529,"avgInc":749},{"code":"10010020","name":"嘉義縣朴子市","county":"嘉義縣","town":"朴子市","t110":41256,"t114":39950,"t115":39835,"diff":-1421,"g":-3.44,"s110":3389,"s115":3108,"sDiff":-281,"sG":-8.29,"g0_5":-22.2,"g6_11":-6.2,"oldPct":22.7,"sShare":7.8,"medInc":521,"avgInc":748},{"code":"10010030","name":"嘉義縣布袋鎮","county":"嘉義縣","town":"布袋鎮","t110":25521,"t114":23589,"t115":23149,"diff":-2372,"g":-9.29,"s110":1164,"s115":911,"sDiff":-253,"sG":-21.74,"g0_5":-34.2,"g6_11":-14.5,"oldPct":26.6,"sShare":3.9,"medInc":450,"avgInc":627},{"code":"10010040","name":"嘉義縣大林鎮","county":"嘉義縣","town":"大林鎮","t110":30068,"t114":29542,"t115":29407,"diff":-661,"g":-2.2,"s110":1895,"s115":1774,"sDiff":-121,"sG":-6.39,"g0_5":-11.6,"g6_11":-5.3,"oldPct":25.9,"sShare":6,"medInc":467,"avgInc":678},{"code":"10010050","name":"嘉義縣民雄鄉","county":"嘉義縣","town":"民雄鄉","t110":70675,"t114":69716,"t115":69325,"diff":-1350,"g":-1.91,"s110":4721,"s115":4525,"sDiff":-196,"sG":-4.15,"g0_5":-20.9,"g6_11":-0.8,"oldPct":21.4,"sShare":6.5,"medInc":458,"avgInc":672},{"code":"10010060","name":"嘉義縣溪口鄉","county":"嘉義縣","town":"溪口鄉","t110":13761,"t114":12604,"t115":12461,"diff":-1300,"g":-9.45,"s110":628,"s115":540,"sDiff":-88,"sG":-14.01,"g0_5":-36.6,"g6_11":-8.3,"oldPct":29.6,"sShare":4.3,"medInc":412,"avgInc":584},{"code":"10010070","name":"嘉義縣新港鄉","county":"嘉義縣","town":"新港鄉","t110":30705,"t114":29006,"t115":28772,"diff":-1933,"g":-6.3,"s110":1800,"s115":1640,"sDiff":-160,"sG":-8.89,"g0_5":-17.3,"g6_11":-6.4,"oldPct":25.8,"sShare":5.7,"medInc":472,"avgInc":687},{"code":"10010080","name":"嘉義縣六腳鄉","county":"嘉義縣","town":"六腳鄉","t110":21774,"t114":20044,"t115":19788,"diff":-1986,"g":-9.12,"s110":791,"s115":648,"sDiff":-143,"sG":-18.08,"g0_5":-14.4,"g6_11":-14.1,"oldPct":31.2,"sShare":3.3,"medInc":440,"avgInc":633},{"code":"10010090","name":"嘉義縣東石鄉","county":"嘉義縣","town":"東石鄉","t110":23464,"t114":21671,"t115":21480,"diff":-1984,"g":-8.46,"s110":1045,"s115":785,"sDiff":-260,"sG":-24.88,"g0_5":-27,"g6_11":-20.9,"oldPct":26.9,"sShare":3.7,"medInc":392,"avgInc":562},{"code":"10010100","name":"嘉義縣義竹鄉","county":"嘉義縣","town":"義竹鄉","t110":17232,"t114":15829,"t115":15705,"diff":-1527,"g":-8.86,"s110":650,"s115":625,"sDiff":-25,"sG":-3.85,"g0_5":-7.8,"g6_11":-16.1,"oldPct":31.7,"sShare":4,"medInc":461,"avgInc":651},{"code":"10010110","name":"嘉義縣鹿草鄉","county":"嘉義縣","town":"鹿草鄉","t110":14658,"t114":13460,"t115":13297,"diff":-1361,"g":-9.29,"s110":581,"s115":509,"sDiff":-72,"sG":-12.39,"g0_5":-15.1,"g6_11":-15.6,"oldPct":32.1,"sShare":3.8,"medInc":434,"avgInc":615},{"code":"10010120","name":"嘉義縣水上鄉","county":"嘉義縣","town":"水上鄉","t110":48529,"t114":46932,"t115":46463,"diff":-2066,"g":-4.26,"s110":2301,"s115":2116,"sDiff":-185,"sG":-8.04,"g0_5":-25.5,"g6_11":-3.7,"oldPct":23.6,"sShare":4.6,"medInc":431,"avgInc":616},{"code":"10010130","name":"嘉義縣中埔鄉","county":"嘉義縣","town":"中埔鄉","t110":43602,"t114":41673,"t115":41072,"diff":-2530,"g":-5.8,"s110":2408,"s115":1960,"sDiff":-448,"sG":-18.6,"g0_5":-32.5,"g6_11":-17.1,"oldPct":24.7,"sShare":4.8,"medInc":433,"avgInc":613},{"code":"10010140","name":"嘉義縣竹崎鄉","county":"嘉義縣","town":"竹崎鄉","t110":34190,"t114":32160,"t115":31775,"diff":-2415,"g":-7.06,"s110":1823,"s115":1569,"sDiff":-254,"sG":-13.93,"g0_5":-31.1,"g6_11":-11.5,"oldPct":27.1,"sShare":4.9,"medInc":421,"avgInc":583},{"code":"10010150","name":"嘉義縣梅山鄉","county":"嘉義縣","town":"梅山鄉","t110":18324,"t114":17177,"t115":17039,"diff":-1285,"g":-7.01,"s110":945,"s115":843,"sDiff":-102,"sG":-10.79,"g0_5":-6.1,"g6_11":-8.8,"oldPct":29.5,"sShare":4.9,"medInc":433,"avgInc":620},{"code":"10010160","name":"嘉義縣番路鄉","county":"嘉義縣","town":"番路鄉","t110":11033,"t114":10582,"t115":10498,"diff":-535,"g":-4.85,"s110":524,"s115":414,"sDiff":-110,"sG":-20.99,"g0_5":-25.7,"g6_11":-15.9,"oldPct":27.4,"sShare":3.9,"medInc":400,"avgInc":583},{"code":"10010170","name":"嘉義縣大埔鄉","county":"嘉義縣","town":"大埔鄉","t110":4533,"t114":4160,"t115":4128,"diff":-405,"g":-8.93,"s110":253,"s115":232,"sDiff":-21,"sG":-8.3,"g0_5":-39,"g6_11":8.9,"oldPct":24,"sShare":5.6,"medInc":446,"avgInc":623},{"code":"10010180","name":"嘉義縣阿里山鄉","county":"嘉義縣","town":"阿里山鄉","t110":5420,"t114":5163,"t115":5138,"diff":-282,"g":-5.2,"s110":426,"s115":361,"sDiff":-65,"sG":-15.26,"g0_5":-11.5,"g6_11":-15,"oldPct":21.9,"sShare":7,"medInc":398,"avgInc":587},{"code":"10013010","name":"屏東縣屏東市","county":"屏東縣","town":"屏東市","t110":195862,"t114":191466,"t115":190101,"diff":-5761,"g":-2.94,"s110":15808,"s115":15277,"sDiff":-531,"sG":-3.36,"g0_5":-20.7,"g6_11":1.6,"oldPct":21.6,"sShare":8,"medInc":481,"avgInc":699},{"code":"10013020","name":"屏東縣潮州鎮","county":"屏東縣","town":"潮州鎮","t110":53546,"t114":53723,"t115":53483,"diff":-63,"g":-0.12,"s110":3667,"s115":3738,"sDiff":71,"sG":1.94,"g0_5":-4.3,"g6_11":1.4,"oldPct":21,"sShare":7,"medInc":471,"avgInc":657},{"code":"10013030","name":"屏東縣東港鎮","county":"屏東縣","town":"東港鎮","t110":46268,"t114":45879,"t115":45532,"diff":-736,"g":-1.59,"s110":4035,"s115":3812,"sDiff":-223,"sG":-5.53,"g0_5":-13.8,"g6_11":-0.6,"oldPct":19,"sShare":8.4,"medInc":442,"avgInc":635},{"code":"10013040","name":"屏東縣恆春鎮","county":"屏東縣","town":"恆春鎮","t110":30089,"t114":28770,"t115":28364,"diff":-1725,"g":-5.73,"s110":2377,"s115":2130,"sDiff":-247,"sG":-10.39,"g0_5":-26.3,"g6_11":-5,"oldPct":19.6,"sShare":7.5,"medInc":390,"avgInc":684},{"code":"10013050","name":"屏東縣萬丹鄉","county":"屏東縣","town":"萬丹鄉","t110":49696,"t114":48586,"t115":48554,"diff":-1142,"g":-2.3,"s110":3591,"s115":3452,"sDiff":-139,"sG":-3.87,"g0_5":-14.3,"g6_11":-2.5,"oldPct":21.4,"sShare":7.1,"medInc":457,"avgInc":651},{"code":"10013060","name":"屏東縣長治鄉","county":"屏東縣","town":"長治鄉","t110":29337,"t114":29192,"t115":29059,"diff":-278,"g":-0.95,"s110":1680,"s115":1681,"sDiff":1,"sG":0.06,"g0_5":-16.4,"g6_11":3.4,"oldPct":23.2,"sShare":5.8,"medInc":489,"avgInc":650},{"code":"10013070","name":"屏東縣麟洛鄉","county":"屏東縣","town":"麟洛鄉","t110":10629,"t114":10406,"t115":10464,"diff":-165,"g":-1.55,"s110":511,"s115":387,"sDiff":-124,"sG":-24.27,"g0_5":-26.6,"g6_11":-28.5,"oldPct":28.1,"sShare":3.7,"medInc":462,"avgInc":673},{"code":"10013080","name":"屏東縣九如鄉","county":"屏東縣","town":"九如鄉","t110":21734,"t114":21420,"t115":21318,"diff":-416,"g":-1.91,"s110":1386,"s115":1282,"sDiff":-104,"sG":-7.5,"g0_5":-19.1,"g6_11":-3.2,"oldPct":21.9,"sShare":6,"medInc":460,"avgInc":602},{"code":"10013090","name":"屏東縣里港鄉","county":"屏東縣","town":"里港鄉","t110":25696,"t114":24948,"t115":24705,"diff":-991,"g":-3.86,"s110":1961,"s115":1899,"sDiff":-62,"sG":-3.16,"g0_5":-12.6,"g6_11":-2,"oldPct":21.7,"sShare":7.7,"medInc":447,"avgInc":625},{"code":"10013100","name":"屏東縣鹽埔鄉","county":"屏東縣","town":"鹽埔鄉","t110":24586,"t114":23106,"t115":22890,"diff":-1696,"g":-6.9,"s110":1482,"s115":1282,"sDiff":-200,"sG":-13.5,"g0_5":-26.4,"g6_11":-9.5,"oldPct":23.1,"sShare":5.6,"medInc":423,"avgInc":574},{"code":"10013110","name":"屏東縣高樹鄉","county":"屏東縣","town":"高樹鄉","t110":23439,"t114":21935,"t115":21586,"diff":-1853,"g":-7.91,"s110":1143,"s115":995,"sDiff":-148,"sG":-12.95,"g0_5":-24,"g6_11":-9.9,"oldPct":29.4,"sShare":4.6,"medInc":395,"avgInc":561},{"code":"10013120","name":"屏東縣萬巒鄉","county":"屏東縣","town":"萬巒鄉","t110":19915,"t114":18654,"t115":18430,"diff":-1485,"g":-7.46,"s110":1282,"s115":1100,"sDiff":-182,"sG":-14.2,"g0_5":-30.8,"g6_11":-8.8,"oldPct":26.2,"sShare":6,"medInc":440,"avgInc":607},{"code":"10013130","name":"屏東縣內埔鄉","county":"屏東縣","town":"內埔鄉","t110":52544,"t114":52760,"t115":52514,"diff":-30,"g":-0.06,"s110":2964,"s115":3165,"sDiff":201,"sG":6.78,"g0_5":20.3,"g6_11":11.5,"oldPct":23.4,"sShare":6,"medInc":456,"avgInc":614},{"code":"10013140","name":"屏東縣竹田鄉","county":"屏東縣","town":"竹田鄉","t110":16318,"t114":15363,"t115":15308,"diff":-1010,"g":-6.19,"s110":765,"s115":675,"sDiff":-90,"sG":-11.76,"g0_5":-30.5,"g6_11":-8.2,"oldPct":27.7,"sShare":4.4,"medInc":430,"avgInc":600},{"code":"10013150","name":"屏東縣新埤鄉","county":"屏東縣","town":"新埤鄉","t110":9451,"t114":8983,"t115":8930,"diff":-521,"g":-5.51,"s110":392,"s115":403,"sDiff":11,"sG":2.81,"g0_5":-10.9,"g6_11":-3.7,"oldPct":27.7,"sShare":4.5,"medInc":408,"avgInc":550},{"code":"10013160","name":"屏東縣枋寮鄉","county":"屏東縣","town":"枋寮鄉","t110":23246,"t114":22321,"t115":22059,"diff":-1187,"g":-5.11,"s110":1302,"s115":1285,"sDiff":-17,"sG":-1.31,"g0_5":-16.2,"g6_11":5,"oldPct":25.8,"sShare":5.8,"medInc":423,"avgInc":573},{"code":"10013170","name":"屏東縣新園鄉","county":"屏東縣","town":"新園鄉","t110":33447,"t114":31703,"t115":31423,"diff":-2024,"g":-6.05,"s110":1787,"s115":1399,"sDiff":-388,"sG":-21.71,"g0_5":-10.1,"g6_11":-19.9,"oldPct":22.8,"sShare":4.5,"medInc":424,"avgInc":597},{"code":"10013180","name":"屏東縣崁頂鄉","county":"屏東縣","town":"崁頂鄉","t110":15272,"t114":14459,"t115":14294,"diff":-978,"g":-6.4,"s110":2141,"s115":1983,"sDiff":-158,"sG":-7.38,"g0_5":-23.6,"g6_11":-0.1,"oldPct":21.8,"sShare":13.9,"medInc":424,"avgInc":579},{"code":"10013190","name":"屏東縣林邊鄉","county":"屏東縣","town":"林邊鄉","t110":17023,"t114":15821,"t115":15648,"diff":-1375,"g":-8.08,"s110":979,"s115":825,"sDiff":-154,"sG":-15.73,"g0_5":-33.8,"g6_11":1.3,"oldPct":27.2,"sShare":5.3,"medInc":425,"avgInc":601},{"code":"10013200","name":"屏東縣南州鄉","county":"屏東縣","town":"南州鄉","t110":10133,"t114":9600,"t115":9557,"diff":-576,"g":-5.68,"s110":475,"s115":383,"sDiff":-92,"sG":-19.37,"g0_5":-32.2,"g6_11":-14,"oldPct":27.8,"sShare":4,"medInc":481,"avgInc":629},{"code":"10013210","name":"屏東縣佳冬鄉","county":"屏東縣","town":"佳冬鄉","t110":18321,"t114":17323,"t115":17083,"diff":-1238,"g":-6.76,"s110":914,"s115":828,"sDiff":-86,"sG":-9.41,"g0_5":-10.6,"g6_11":-14.2,"oldPct":26.8,"sShare":4.8,"medInc":406,"avgInc":555},{"code":"10013220","name":"屏東縣琉球鄉","county":"屏東縣","town":"琉球鄉","t110":12104,"t114":12076,"t115":12113,"diff":9,"g":0.07,"s110":743,"s115":631,"sDiff":-112,"sG":-15.07,"g0_5":-15,"g6_11":-16.3,"oldPct":22.7,"sShare":5.2,"medInc":424,"avgInc":613},{"code":"10013230","name":"屏東縣車城鄉","county":"屏東縣","town":"車城鄉","t110":8181,"t114":7694,"t115":7562,"diff":-619,"g":-7.57,"s110":425,"s115":329,"sDiff":-96,"sG":-22.59,"g0_5":-28.6,"g6_11":-7.5,"oldPct":27.2,"sShare":4.4,"medInc":365,"avgInc":527},{"code":"10013240","name":"屏東縣滿州鄉","county":"屏東縣","town":"滿州鄉","t110":7353,"t114":6927,"t115":6941,"diff":-412,"g":-5.6,"s110":318,"s115":245,"sDiff":-73,"sG":-22.96,"g0_5":8.3,"g6_11":-27.9,"oldPct":24.6,"sShare":3.5,"medInc":365,"avgInc":504},{"code":"10013250","name":"屏東縣枋山鄉","county":"屏東縣","town":"枋山鄉","t110":5150,"t114":4905,"t115":4929,"diff":-221,"g":-4.29,"s110":241,"s115":222,"sDiff":-19,"sG":-7.88,"g0_5":23.2,"g6_11":-27.5,"oldPct":23.3,"sShare":4.5,"medInc":404,"avgInc":544},{"code":"10013260","name":"屏東縣三地門鄉","county":"屏東縣","town":"三地門鄉","t110":7711,"t114":7598,"t115":7657,"diff":-54,"g":-0.7,"s110":692,"s115":637,"sDiff":-55,"sG":-7.95,"g0_5":-15.8,"g6_11":-3,"oldPct":16.2,"sShare":8.3,"medInc":443,"avgInc":541},{"code":"10013270","name":"屏東縣霧臺鄉","county":"屏東縣","town":"霧臺鄉","t110":3259,"t114":3166,"t115":3167,"diff":-92,"g":-2.82,"s110":215,"s115":191,"sDiff":-24,"sG":-11.16,"g0_5":-5.6,"g6_11":-4.4,"oldPct":19.1,"sShare":6,"medInc":452,"avgInc":526},{"code":"10013280","name":"屏東縣瑪家鄉","county":"屏東縣","town":"瑪家鄉","t110":6706,"t114":6647,"t115":6672,"diff":-34,"g":-0.51,"s110":619,"s115":493,"sDiff":-126,"sG":-20.36,"g0_5":-13.5,"g6_11":-21.7,"oldPct":16.2,"sShare":7.4,"medInc":464,"avgInc":566},{"code":"10013290","name":"屏東縣泰武鄉","county":"屏東縣","town":"泰武鄉","t110":5360,"t114":5190,"t115":5204,"diff":-156,"g":-2.91,"s110":613,"s115":511,"sDiff":-102,"sG":-16.64,"g0_5":-28,"g6_11":-10.5,"oldPct":14.8,"sShare":9.8,"medInc":468,"avgInc":543},{"code":"10013300","name":"屏東縣來義鄉","county":"屏東縣","town":"來義鄉","t110":7397,"t114":7282,"t115":7282,"diff":-115,"g":-1.55,"s110":634,"s115":657,"sDiff":23,"sG":3.63,"g0_5":-15.9,"g6_11":5.3,"oldPct":16.4,"sShare":9,"medInc":459,"avgInc":545},{"code":"10013310","name":"屏東縣春日鄉","county":"屏東縣","town":"春日鄉","t110":4930,"t114":4857,"t115":4874,"diff":-56,"g":-1.14,"s110":496,"s115":468,"sDiff":-28,"sG":-5.65,"g0_5":-14.3,"g6_11":-4.8,"oldPct":16.2,"sShare":9.6,"medInc":458,"avgInc":543},{"code":"10013320","name":"屏東縣獅子鄉","county":"屏東縣","town":"獅子鄉","t110":4888,"t114":4825,"t115":4827,"diff":-61,"g":-1.25,"s110":397,"s115":298,"sDiff":-99,"sG":-24.94,"g0_5":-25.2,"g6_11":-22,"oldPct":17.6,"sShare":6.2,"medInc":425,"avgInc":531},{"code":"10013330","name":"屏東縣牡丹鄉","county":"屏東縣","town":"牡丹鄉","t110":4849,"t114":4671,"t115":4722,"diff":-127,"g":-2.62,"s110":381,"s115":328,"sDiff":-53,"sG":-13.91,"g0_5":-29,"g6_11":-11.5,"oldPct":19.1,"sShare":6.9,"medInc":450,"avgInc":555},{"code":"10014010","name":"臺東縣臺東市","county":"臺東縣","town":"臺東市","t110":103943,"t114":102681,"t115":102065,"diff":-1878,"g":-1.81,"s110":9314,"s115":8838,"sDiff":-476,"sG":-5.11,"g0_5":-14.5,"g6_11":-2.2,"oldPct":20.2,"sShare":8.7,"medInc":465,"avgInc":664},{"code":"10014020","name":"臺東縣成功鎮","county":"臺東縣","town":"成功鎮","t110":13330,"t114":12754,"t115":12617,"diff":-713,"g":-5.35,"s110":742,"s115":631,"sDiff":-111,"sG":-14.96,"g0_5":-19.4,"g6_11":-14.4,"oldPct":26.7,"sShare":5,"medInc":403,"avgInc":570},{"code":"10014030","name":"臺東縣關山鎮","county":"臺東縣","town":"關山鎮","t110":8274,"t114":7757,"t115":7689,"diff":-585,"g":-7.07,"s110":593,"s115":557,"sDiff":-36,"sG":-6.07,"g0_5":-15.1,"g6_11":-4.4,"oldPct":25.7,"sShare":7.2,"medInc":429,"avgInc":606},{"code":"10014040","name":"臺東縣卑南鄉","county":"臺東縣","town":"卑南鄉","t110":16833,"t114":16264,"t115":16188,"diff":-645,"g":-3.83,"s110":984,"s115":836,"sDiff":-148,"sG":-15.04,"g0_5":-21.5,"g6_11":-12.6,"oldPct":22.6,"sShare":5.2,"medInc":412,"avgInc":546},{"code":"10014050","name":"臺東縣鹿野鄉","county":"臺東縣","town":"鹿野鄉","t110":7482,"t114":6924,"t115":6975,"diff":-507,"g":-6.78,"s110":388,"s115":296,"sDiff":-92,"sG":-23.71,"g0_5":-6.5,"g6_11":-23,"oldPct":26.4,"sShare":4.2,"medInc":388,"avgInc":584},{"code":"10014060","name":"臺東縣池上鄉","county":"臺東縣","town":"池上鄉","t110":7976,"t114":7529,"t115":7428,"diff":-548,"g":-6.87,"s110":441,"s115":425,"sDiff":-16,"sG":-3.63,"g0_5":-15.7,"g6_11":-14.9,"oldPct":26.8,"sShare":5.7,"medInc":419,"avgInc":604},{"code":"10014070","name":"臺東縣東河鄉","county":"臺東縣","town":"東河鄉","t110":8106,"t114":7710,"t115":7746,"diff":-360,"g":-4.44,"s110":392,"s115":309,"sDiff":-83,"sG":-21.17,"g0_5":-11.7,"g6_11":-27.1,"oldPct":28.3,"sShare":4,"medInc":391,"avgInc":562},{"code":"10014080","name":"臺東縣長濱鄉","county":"臺東縣","town":"長濱鄉","t110":6791,"t114":6469,"t115":6388,"diff":-403,"g":-5.93,"s110":311,"s115":232,"sDiff":-79,"sG":-25.4,"g0_5":-22.6,"g6_11":-16.9,"oldPct":29.2,"sShare":3.6,"medInc":372,"avgInc":561},{"code":"10014090","name":"臺東縣太麻里鄉","county":"臺東縣","town":"太麻里鄉","t110":10819,"t114":10375,"t115":10437,"diff":-382,"g":-3.53,"s110":626,"s115":515,"sDiff":-111,"sG":-17.73,"g0_5":-11.5,"g6_11":-15.1,"oldPct":23.8,"sShare":4.9,"medInc":411,"avgInc":547},{"code":"10014100","name":"臺東縣大武鄉","county":"臺東縣","town":"大武鄉","t110":5635,"t114":5327,"t115":5299,"diff":-336,"g":-5.96,"s110":377,"s115":353,"sDiff":-24,"sG":-6.37,"g0_5":-28.8,"g6_11":3.1,"oldPct":22.2,"sShare":6.7,"medInc":382,"avgInc":525},{"code":"10014110","name":"臺東縣綠島鄉","county":"臺東縣","town":"綠島鄉","t110":4124,"t114":4327,"t115":4320,"diff":196,"g":4.75,"s110":258,"s115":224,"sDiff":-34,"sG":-13.18,"g0_5":-36.7,"g6_11":3.1,"oldPct":15.5,"sShare":5.2,"medInc":468,"avgInc":629},{"code":"10014120","name":"臺東縣海端鄉","county":"臺東縣","town":"海端鄉","t110":4151,"t114":4317,"t115":4305,"diff":154,"g":3.71,"s110":455,"s115":392,"sDiff":-63,"sG":-13.85,"g0_5":-5.1,"g6_11":-18.7,"oldPct":11.8,"sShare":9.1,"medInc":441,"avgInc":514},{"code":"10014130","name":"臺東縣延平鄉","county":"臺東縣","town":"延平鄉","t110":3591,"t114":3547,"t115":3617,"diff":26,"g":0.72,"s110":376,"s115":343,"sDiff":-33,"sG":-8.78,"g0_5":-6.4,"g6_11":-1.4,"oldPct":12.2,"sShare":9.5,"medInc":410,"avgInc":505},{"code":"10014140","name":"臺東縣金峰鄉","county":"臺東縣","town":"金峰鄉","t110":3663,"t114":3682,"t115":3684,"diff":21,"g":0.57,"s110":353,"s115":336,"sDiff":-17,"sG":-4.82,"g0_5":-10.8,"g6_11":-7,"oldPct":15.2,"sShare":9.1,"medInc":423,"avgInc":516},{"code":"10014150","name":"臺東縣達仁鄉","county":"臺東縣","town":"達仁鄉","t110":3437,"t114":3437,"t115":3516,"diff":79,"g":2.3,"s110":195,"s115":208,"sDiff":13,"sG":6.67,"g0_5":5.5,"g6_11":13.3,"oldPct":17.6,"sShare":5.9,"medInc":439,"avgInc":528},{"code":"10014160","name":"臺東縣蘭嶼鄉","county":"臺東縣","town":"蘭嶼鄉","t110":5231,"t114":5220,"t115":5180,"diff":-51,"g":-0.97,"s110":480,"s115":458,"sDiff":-22,"sG":-4.58,"g0_5":-23.2,"g6_11":-2,"oldPct":11.4,"sShare":8.8,"medInc":462,"avgInc":559},{"code":"10015010","name":"花蓮縣花蓮市","county":"花蓮縣","town":"花蓮市","t110":100955,"t114":96860,"t115":95493,"diff":-5462,"g":-5.41,"s110":10556,"s115":8708,"sDiff":-1848,"sG":-17.51,"g0_5":-39,"g6_11":-12.7,"oldPct":21.8,"sShare":9.1,"medInc":454,"avgInc":714},{"code":"10015020","name":"花蓮縣鳳林鎮","county":"花蓮縣","town":"鳳林鎮","t110":10679,"t114":10136,"t115":10050,"diff":-629,"g":-5.89,"s110":620,"s115":609,"sDiff":-11,"sG":-1.77,"g0_5":-12,"g6_11":-5.9,"oldPct":30.4,"sShare":6.1,"medInc":412,"avgInc":551},{"code":"10015030","name":"花蓮縣玉里鎮","county":"花蓮縣","town":"玉里鎮","t110":22878,"t114":21277,"t115":20919,"diff":-1959,"g":-8.56,"s110":1548,"s115":1218,"sDiff":-330,"sG":-21.32,"g0_5":-40,"g6_11":-12.4,"oldPct":25.8,"sShare":5.8,"medInc":436,"avgInc":603},{"code":"10015040","name":"花蓮縣新城鄉","county":"花蓮縣","town":"新城鄉","t110":20252,"t114":20492,"t115":20374,"diff":122,"g":0.6,"s110":1494,"s115":1455,"sDiff":-39,"sG":-2.61,"g0_5":-19.9,"g6_11":-0.3,"oldPct":18.8,"sShare":7.1,"medInc":460,"avgInc":618},{"code":"10015050","name":"花蓮縣吉安鄉","county":"花蓮縣","town":"吉安鄉","t110":83122,"t114":83004,"t115":82695,"diff":-427,"g":-0.51,"s110":5354,"s115":5095,"sDiff":-259,"sG":-4.84,"g0_5":-19.4,"g6_11":-2,"oldPct":21.5,"sShare":6.2,"medInc":456,"avgInc":654},{"code":"10015060","name":"花蓮縣壽豐鄉","county":"花蓮縣","town":"壽豐鄉","t110":17351,"t114":16628,"t115":16541,"diff":-810,"g":-4.67,"s110":962,"s115":862,"sDiff":-100,"sG":-10.4,"g0_5":-17.5,"g6_11":-6.9,"oldPct":26,"sShare":5.2,"medInc":399,"avgInc":598},{"code":"10015070","name":"花蓮縣光復鄉","county":"花蓮縣","town":"光復鄉","t110":12185,"t114":11478,"t115":11554,"diff":-631,"g":-5.18,"s110":677,"s115":548,"sDiff":-129,"sG":-19.05,"g0_5":-35,"g6_11":-11.1,"oldPct":29.4,"sShare":4.7,"medInc":385,"avgInc":529},{"code":"10015080","name":"花蓮縣豐濱鄉","county":"花蓮縣","town":"豐濱鄉","t110":4327,"t114":4082,"t115":4058,"diff":-269,"g":-6.22,"s110":187,"s115":185,"sDiff":-2,"sG":-1.07,"g0_5":-2.3,"g6_11":1,"oldPct":27.1,"sShare":4.6,"medInc":371,"avgInc":439},{"code":"10015090","name":"花蓮縣瑞穗鄉","county":"花蓮縣","town":"瑞穗鄉","t110":11123,"t114":10388,"t115":10332,"diff":-791,"g":-7.11,"s110":634,"s115":600,"sDiff":-34,"sG":-5.36,"g0_5":-29.6,"g6_11":5.2,"oldPct":29,"sShare":5.8,"medInc":401,"avgInc":545},{"code":"10015100","name":"花蓮縣富里鄉","county":"花蓮縣","town":"富里鄉","t110":9812,"t114":9386,"t115":9344,"diff":-468,"g":-4.77,"s110":537,"s115":454,"sDiff":-83,"sG":-15.46,"g0_5":44.9,"g6_11":-19.6,"oldPct":27.2,"sShare":4.9,"medInc":381,"avgInc":539},{"code":"10015110","name":"花蓮縣秀林鄉","county":"花蓮縣","town":"秀林鄉","t110":16555,"t114":17178,"t115":17299,"diff":744,"g":4.49,"s110":1701,"s115":1801,"sDiff":100,"sG":5.88,"g0_5":-13.8,"g6_11":12.8,"oldPct":12.5,"sShare":10.4,"medInc":405,"avgInc":496},{"code":"10015120","name":"花蓮縣萬榮鄉","county":"花蓮縣","town":"萬榮鄉","t110":6152,"t114":6047,"t115":6088,"diff":-64,"g":-1.04,"s110":575,"s115":542,"sDiff":-33,"sG":-5.74,"g0_5":-12,"g6_11":-0.3,"oldPct":13.8,"sShare":8.9,"medInc":376,"avgInc":463},{"code":"10015130","name":"花蓮縣卓溪鄉","county":"花蓮縣","town":"卓溪鄉","t110":5967,"t114":5851,"t115":5803,"diff":-164,"g":-2.75,"s110":625,"s115":589,"sDiff":-36,"sG":-5.76,"g0_5":-21.6,"g6_11":2.2,"oldPct":13.1,"sShare":10.1,"medInc":400,"avgInc":468},{"code":"10016010","name":"澎湖縣馬公市","county":"澎湖縣","town":"馬公市","t110":63289,"t114":63282,"t115":62811,"diff":-478,"g":-0.76,"s110":4564,"s115":4414,"sDiff":-150,"sG":-3.29,"g0_5":-24.1,"g6_11":0.2,"oldPct":20.2,"sShare":7,"medInc":586,"avgInc":769},{"code":"10016020","name":"澎湖縣湖西鄉","county":"澎湖縣","town":"湖西鄉","t110":15447,"t114":16131,"t115":16271,"diff":824,"g":5.33,"s110":811,"s115":789,"sDiff":-22,"sG":-2.71,"g0_5":-5.9,"g6_11":-5.9,"oldPct":21.8,"sShare":4.8,"medInc":521,"avgInc":664},{"code":"10016030","name":"澎湖縣白沙鄉","county":"澎湖縣","town":"白沙鄉","t110":9989,"t114":10084,"t115":10154,"diff":165,"g":1.65,"s110":536,"s115":576,"sDiff":40,"sG":7.46,"g0_5":-22.2,"g6_11":25,"oldPct":24.1,"sShare":5.7,"medInc":495,"avgInc":636},{"code":"10016040","name":"澎湖縣西嶼鄉","county":"澎湖縣","town":"西嶼鄉","t110":8338,"t114":8039,"t115":8101,"diff":-237,"g":-2.84,"s110":413,"s115":393,"sDiff":-20,"sG":-4.84,"g0_5":-34.9,"g6_11":-4,"oldPct":27.7,"sShare":4.9,"medInc":527,"avgInc":681},{"code":"10016050","name":"澎湖縣望安鄉","county":"澎湖縣","town":"望安鄉","t110":5415,"t114":5266,"t115":5387,"diff":-28,"g":-0.52,"s110":266,"s115":248,"sDiff":-18,"sG":-6.77,"g0_5":-26.6,"g6_11":0.8,"oldPct":26.8,"sShare":4.6,"medInc":500,"avgInc":686},{"code":"10016060","name":"澎湖縣七美鄉","county":"澎湖縣","town":"七美鄉","t110":3862,"t114":3914,"t115":4001,"diff":139,"g":3.6,"s110":216,"s115":194,"sDiff":-22,"sG":-10.19,"g0_5":-27.5,"g6_11":2.9,"oldPct":23,"sShare":4.8,"medInc":562,"avgInc":756},{"code":"10017010","name":"基隆市中正區","county":"基隆市","town":"中正區","t110":50654,"t114":51542,"t115":51287,"diff":633,"g":1.25,"s110":2741,"s115":2509,"sDiff":-232,"sG":-8.46,"g0_5":-29.9,"g6_11":-0.1,"oldPct":24.4,"sShare":4.9,"medInc":431,"avgInc":656},{"code":"10017020","name":"基隆市七堵區","county":"基隆市","town":"七堵區","t110":53276,"t114":52169,"t115":51948,"diff":-1328,"g":-2.49,"s110":3877,"s115":3360,"sDiff":-517,"sG":-13.34,"g0_5":-30.2,"g6_11":-7.8,"oldPct":22.3,"sShare":6.5,"medInc":439,"avgInc":667},{"code":"10017030","name":"基隆市暖暖區","county":"基隆市","town":"暖暖區","t110":38398,"t114":38462,"t115":38284,"diff":-114,"g":-0.3,"s110":2726,"s115":2574,"sDiff":-152,"sG":-5.58,"g0_5":-34.6,"g6_11":3,"oldPct":20.9,"sShare":6.7,"medInc":470,"avgInc":679},{"code":"10017040","name":"基隆市仁愛區","county":"基隆市","town":"仁愛區","t110":41842,"t114":39689,"t115":39190,"diff":-2652,"g":-6.34,"s110":4277,"s115":3790,"sDiff":-487,"sG":-11.39,"g0_5":-33.2,"g6_11":-5.8,"oldPct":26,"sShare":9.7,"medInc":466,"avgInc":727},{"code":"10017050","name":"基隆市中山區","county":"基隆市","town":"中山區","t110":45755,"t114":45556,"t115":45214,"diff":-541,"g":-1.18,"s110":2467,"s115":2261,"sDiff":-206,"sG":-8.35,"g0_5":-28.7,"g6_11":-0.5,"oldPct":23.5,"sShare":5,"medInc":422,"avgInc":628},{"code":"10017060","name":"基隆市安樂區","county":"基隆市","town":"安樂區","t110":81001,"t114":79850,"t115":79439,"diff":-1562,"g":-1.93,"s110":5937,"s115":5348,"sDiff":-589,"sG":-9.92,"g0_5":-32,"g6_11":-4.3,"oldPct":22,"sShare":6.7,"medInc":475,"avgInc":750},{"code":"10017070","name":"基隆市信義區","county":"基隆市","town":"信義區","t110":53051,"t114":52568,"t115":52213,"diff":-838,"g":-1.58,"s110":3273,"s115":3089,"sDiff":-184,"sG":-5.62,"g0_5":-20.7,"g6_11":-4.2,"oldPct":23.4,"sShare":5.9,"medInc":484,"avgInc":728},{"code":"10018010","name":"新竹市東區","county":"新竹市","town":"東區","t110":221651,"t114":222219,"t115":221682,"diff":31,"g":0.01,"s110":31804,"s115":28402,"sDiff":-3402,"sG":-10.7,"g0_5":-27.1,"g6_11":-7.8,"oldPct":15.4,"sShare":12.8,"medInc":835,"avgInc":1944},{"code":"10018020","name":"新竹市北區","county":"新竹市","town":"北區","t110":152348,"t114":153915,"t115":154244,"diff":1896,"g":1.24,"s110":15301,"s115":13136,"sDiff":-2165,"sG":-14.15,"g0_5":-23.4,"g6_11":-12.8,"oldPct":18.3,"sShare":8.5,"medInc":577,"avgInc":1129},{"code":"10018030","name":"新竹市香山區","county":"新竹市","town":"香山區","t110":78641,"t114":79606,"t115":79805,"diff":1164,"g":1.48,"s110":6280,"s115":5386,"sDiff":-894,"sG":-14.24,"g0_5":-26.1,"g6_11":-8.8,"oldPct":17.1,"sShare":6.7,"medInc":533,"avgInc":984},{"code":"10020010","name":"嘉義市東區","county":"嘉義市","town":"東區","t110":118956,"t114":116567,"t115":116430,"diff":-2526,"g":-2.12,"s110":10431,"s115":9341,"sDiff":-1090,"sG":-10.45,"g0_5":-21.6,"g6_11":-6,"oldPct":21.8,"sShare":8,"medInc":527,"avgInc":831},{"code":"10020020","name":"嘉義市西區","county":"嘉義市","town":"西區","t110":145771,"t114":145025,"t115":144999,"diff":-772,"g":-0.53,"s110":13849,"s115":12305,"sDiff":-1544,"sG":-11.15,"g0_5":-22.3,"g6_11":-7.5,"oldPct":19.4,"sShare":8.5,"medInc":495,"avgInc":757},{"code":"63000010","name":"臺北市松山區","county":"臺北市","town":"松山區","t110":193388,"t114":187318,"t115":185700,"diff":-7688,"g":-3.98,"s110":20282,"s115":17703,"sDiff":-2579,"sG":-12.72,"g0_5":-27.8,"g6_11":-9.9,"oldPct":25.6,"sShare":9.5,"medInc":739,"avgInc":1435},{"code":"63000020","name":"臺北市信義區","county":"臺北市","town":"信義區","t110":207500,"t114":201446,"t115":199198,"diff":-8302,"g":-4,"s110":15799,"s115":13355,"sDiff":-2444,"sG":-15.47,"g0_5":-33.4,"g6_11":-10,"oldPct":26.8,"sShare":6.7,"medInc":615,"avgInc":1210},{"code":"63000030","name":"臺北市大安區","county":"臺北市","town":"大安區","t110":291410,"t114":282328,"t115":279617,"diff":-11793,"g":-4.05,"s110":31769,"s115":28329,"sDiff":-3440,"sG":-10.83,"g0_5":-28.3,"g6_11":-6.4,"oldPct":26.6,"sShare":10.1,"medInc":825,"avgInc":1620},{"code":"63000040","name":"臺北市中山區","county":"臺北市","town":"中山區","t110":215567,"t114":212152,"t115":210441,"diff":-5126,"g":-2.38,"s110":17393,"s115":14866,"sDiff":-2527,"sG":-14.53,"g0_5":-31.6,"g6_11":-9.6,"oldPct":25.9,"sShare":7.1,"medInc":647,"avgInc":1303},{"code":"63000050","name":"臺北市中正區","county":"臺北市","town":"中正區","t110":150644,"t114":144109,"t115":142673,"diff":-7971,"g":-5.29,"s110":17845,"s115":15599,"sDiff":-2246,"sG":-12.59,"g0_5":-32.8,"g6_11":-7.1,"oldPct":24.3,"sShare":10.9,"medInc":755,"avgInc":1444},{"code":"63000060","name":"臺北市大同區","county":"臺北市","town":"大同區","t110":120772,"t114":116618,"t115":115605,"diff":-5167,"g":-4.28,"s110":10445,"s115":8704,"sDiff":-1741,"sG":-16.67,"g0_5":-37.1,"g6_11":-7.1,"oldPct":24.7,"sShare":7.5,"medInc":568,"avgInc":1010},{"code":"63000070","name":"臺北市萬華區","county":"臺北市","town":"萬華區","t110":176617,"t114":168675,"t115":167175,"diff":-9442,"g":-5.35,"s110":11217,"s115":8589,"sDiff":-2628,"sG":-23.43,"g0_5":-39.7,"g6_11":-15.9,"oldPct":27.1,"sShare":5.1,"medInc":499,"avgInc":852},{"code":"63000080","name":"臺北市文山區","county":"臺北市","town":"文山區","t110":261576,"t114":253822,"t115":252102,"diff":-9474,"g":-3.62,"s110":23774,"s115":19830,"sDiff":-3944,"sG":-16.59,"g0_5":-34.8,"g6_11":-10.4,"oldPct":22.9,"sShare":7.9,"medInc":654,"avgInc":1192},{"code":"63000090","name":"臺北市南港區","county":"臺北市","town":"南港區","t110":115780,"t114":111239,"t115":111371,"diff":-4409,"g":-3.81,"s110":9766,"s115":8019,"sDiff":-1747,"sG":-17.89,"g0_5":-35.1,"g6_11":-9.6,"oldPct":22.8,"sShare":7.2,"medInc":564,"avgInc":1115},{"code":"63000100","name":"臺北市內湖區","county":"臺北市","town":"內湖區","t110":276707,"t114":267959,"t115":265437,"diff":-11270,"g":-4.07,"s110":27164,"s115":24182,"sDiff":-2982,"sG":-10.98,"g0_5":-30.9,"g6_11":-3.6,"oldPct":21.3,"sShare":9.1,"medInc":679,"avgInc":1295},{"code":"63000110","name":"臺北市士林區","county":"臺北市","town":"士林區","t110":269682,"t114":258163,"t115":255580,"diff":-14102,"g":-5.23,"s110":22255,"s115":19081,"sDiff":-3174,"sG":-14.26,"g0_5":-35.4,"g6_11":-7.9,"oldPct":26.1,"sShare":7.5,"medInc":623,"avgInc":1169},{"code":"63000120","name":"臺北市北投區","county":"臺北市","town":"北投區","t110":244750,"t114":235678,"t115":233973,"diff":-10777,"g":-4.4,"s110":22300,"s115":18832,"sDiff":-3468,"sG":-15.55,"g0_5":-33.2,"g6_11":-10.9,"oldPct":24.1,"sShare":8,"medInc":595,"avgInc":1109},{"code":"64000010","name":"高雄市鹽埕區","county":"高雄市","town":"鹽埕區","t110":22912,"t114":21871,"t115":21615,"diff":-1297,"g":-5.66,"s110":1104,"s115":939,"sDiff":-165,"sG":-14.95,"g0_5":-36.8,"g6_11":-12.3,"oldPct":30.4,"sShare":4.3,"medInc":466,"avgInc":767},{"code":"64000020","name":"高雄市鼓山區","county":"高雄市","town":"鼓山區","t110":140410,"t114":140791,"t115":140117,"diff":-293,"g":-0.21,"s110":14962,"s115":13465,"sDiff":-1497,"sG":-10.01,"g0_5":-25.8,"g6_11":-8.1,"oldPct":20.4,"sShare":9.6,"medInc":591,"avgInc":1055},{"code":"64000030","name":"高雄市左營區","county":"高雄市","town":"左營區","t110":196314,"t114":197621,"t115":197219,"diff":905,"g":0.46,"s110":18076,"s115":16449,"sDiff":-1627,"sG":-9,"g0_5":-22,"g6_11":-5.4,"oldPct":17.8,"sShare":8.3,"medInc":606,"avgInc":928},{"code":"64000040","name":"高雄市楠梓區","county":"高雄市","town":"楠梓區","t110":190149,"t114":195613,"t115":195169,"diff":5020,"g":2.64,"s110":19237,"s115":18733,"sDiff":-504,"sG":-2.62,"g0_5":-20.8,"g6_11":3,"oldPct":16.9,"sShare":9.6,"medInc":517,"avgInc":778},{"code":"64000050","name":"高雄市三民區","county":"高雄市","town":"三民區","t110":333038,"t114":328827,"t115":327213,"diff":-5825,"g":-1.75,"s110":27211,"s115":24712,"sDiff":-2499,"sG":-9.18,"g0_5":-25.9,"g6_11":-4.6,"oldPct":22.5,"sShare":7.6,"medInc":520,"avgInc":831},{"code":"64000060","name":"高雄市新興區","county":"高雄市","town":"新興區","t110":49383,"t114":49380,"t115":49686,"diff":303,"g":0.61,"s110":3794,"s115":3843,"sDiff":49,"sG":1.29,"g0_5":-21.3,"g6_11":7.4,"oldPct":27.4,"sShare":7.7,"medInc":572,"avgInc":1004},{"code":"64000070","name":"高雄市前金區","county":"高雄市","town":"前金區","t110":26416,"t114":27670,"t115":27427,"diff":1011,"g":3.83,"s110":1372,"s115":1187,"sDiff":-185,"sG":-13.48,"g0_5":-22.1,"g6_11":-12.1,"oldPct":28.6,"sShare":4.3,"medInc":568,"avgInc":981},{"code":"64000080","name":"高雄市苓雅區","county":"高雄市","town":"苓雅區","t110":164572,"t114":161185,"t115":159758,"diff":-4814,"g":-2.93,"s110":12652,"s115":11592,"sDiff":-1060,"sG":-8.38,"g0_5":-26.4,"g6_11":-3.4,"oldPct":26.4,"sShare":7.3,"medInc":527,"avgInc":901},{"code":"64000090","name":"高雄市前鎮區","county":"高雄市","town":"前鎮區","t110":182805,"t114":176845,"t115":175205,"diff":-7600,"g":-4.16,"s110":12918,"s115":10585,"sDiff":-2333,"sG":-18.06,"g0_5":-30.9,"g6_11":-15,"oldPct":23.5,"sShare":6,"medInc":502,"avgInc":821},{"code":"64000100","name":"高雄市旗津區","county":"高雄市","town":"旗津區","t110":27204,"t114":24906,"t115":24411,"diff":-2793,"g":-10.27,"s110":1367,"s115":1099,"sDiff":-268,"sG":-19.6,"g0_5":-38.5,"g6_11":-17,"oldPct":22.9,"sShare":4.5,"medInc":404,"avgInc":571},{"code":"64000110","name":"高雄市小港區","county":"高雄市","town":"小港區","t110":156035,"t114":153310,"t115":152928,"diff":-3107,"g":-1.99,"s110":12659,"s115":11346,"sDiff":-1313,"sG":-10.37,"g0_5":-26.4,"g6_11":-7.1,"oldPct":19.2,"sShare":7.4,"medInc":498,"avgInc":764},{"code":"64000120","name":"高雄市鳳山區","county":"高雄市","town":"鳳山區","t110":357946,"t114":353000,"t115":351581,"diff":-6365,"g":-1.78,"s110":31080,"s115":28418,"sDiff":-2662,"sG":-8.56,"g0_5":-26.8,"g6_11":-4.1,"oldPct":20.1,"sShare":8.1,"medInc":502,"avgInc":762},{"code":"64000130","name":"高雄市林園區","county":"高雄市","town":"林園區","t110":68893,"t114":67341,"t115":66900,"diff":-1993,"g":-2.89,"s110":5120,"s115":4685,"sDiff":-435,"sG":-8.5,"g0_5":-23.3,"g6_11":-3.2,"oldPct":19.7,"sShare":7,"medInc":465,"avgInc":654},{"code":"64000140","name":"高雄市大寮區","county":"高雄市","town":"大寮區","t110":111933,"t114":112239,"t115":111663,"diff":-270,"g":-0.24,"s110":7333,"s115":7016,"sDiff":-317,"sG":-4.32,"g0_5":-24,"g6_11":4.6,"oldPct":20.1,"sShare":6.3,"medInc":434,"avgInc":619},{"code":"64000150","name":"高雄市大樹區","county":"高雄市","town":"大樹區","t110":41257,"t114":39906,"t115":39688,"diff":-1569,"g":-3.8,"s110":2435,"s115":2202,"sDiff":-233,"sG":-9.57,"g0_5":-29.1,"g6_11":-3.7,"oldPct":23.4,"sShare":5.5,"medInc":428,"avgInc":596},{"code":"64000160","name":"高雄市大社區","county":"高雄市","town":"大社區","t110":34050,"t114":33741,"t115":33475,"diff":-575,"g":-1.69,"s110":2011,"s115":1761,"sDiff":-250,"sG":-12.43,"g0_5":-22.8,"g6_11":-11.8,"oldPct":21.6,"sShare":5.3,"medInc":449,"avgInc":671},{"code":"64000170","name":"高雄市仁武區","county":"高雄市","town":"仁武區","t110":93581,"t114":100311,"t115":100748,"diff":7167,"g":7.66,"s110":7150,"s115":7286,"sDiff":136,"sG":1.9,"g0_5":-11.8,"g6_11":4.4,"oldPct":16.4,"sShare":7.2,"medInc":528,"avgInc":774},{"code":"64000180","name":"高雄市鳥松區","county":"高雄市","town":"鳥松區","t110":44393,"t114":43703,"t115":43327,"diff":-1066,"g":-2.4,"s110":2428,"s115":2134,"sDiff":-294,"sG":-12.11,"g0_5":-26,"g6_11":-9.5,"oldPct":25.1,"sShare":4.9,"medInc":629,"avgInc":1039},{"code":"64000190","name":"高雄市岡山區","county":"高雄市","town":"岡山區","t110":95922,"t114":94624,"t115":94129,"diff":-1793,"g":-1.87,"s110":8288,"s115":7717,"sDiff":-571,"sG":-6.89,"g0_5":-22.6,"g6_11":-1.1,"oldPct":20.4,"sShare":8.2,"medInc":481,"avgInc":705},{"code":"64000200","name":"高雄市橋頭區","county":"高雄市","town":"橋頭區","t110":40094,"t114":43341,"t115":43849,"diff":3755,"g":9.37,"s110":2712,"s115":3148,"sDiff":436,"sG":16.08,"g0_5":0.2,"g6_11":18,"oldPct":20.5,"sShare":7.2,"medInc":508,"avgInc":772},{"code":"64000210","name":"高雄市燕巢區","county":"高雄市","town":"燕巢區","t110":29244,"t114":28348,"t115":28208,"diff":-1036,"g":-3.54,"s110":1662,"s115":1495,"sDiff":-167,"sG":-10.05,"g0_5":-23.3,"g6_11":-11.7,"oldPct":23.4,"sShare":5.3,"medInc":432,"avgInc":626},{"code":"64000220","name":"高雄市田寮區","county":"高雄市","town":"田寮區","t110":6788,"t114":6125,"t115":5993,"diff":-795,"g":-11.71,"s110":198,"s115":160,"sDiff":-38,"sG":-19.19,"g0_5":-51.4,"g6_11":0,"oldPct":34.7,"sShare":2.7,"medInc":405,"avgInc":571},{"code":"64000230","name":"高雄市阿蓮區","county":"高雄市","town":"阿蓮區","t110":28011,"t114":26785,"t115":26522,"diff":-1489,"g":-5.32,"s110":2001,"s115":1791,"sDiff":-210,"sG":-10.49,"g0_5":-31.3,"g6_11":-4.2,"oldPct":22.2,"sShare":6.8,"medInc":429,"avgInc":637},{"code":"64000240","name":"高雄市路竹區","county":"高雄市","town":"路竹區","t110":51217,"t114":48906,"t115":48470,"diff":-2747,"g":-5.36,"s110":4399,"s115":3893,"sDiff":-506,"sG":-11.5,"g0_5":-30.6,"g6_11":-6,"oldPct":22,"sShare":8,"medInc":475,"avgInc":710},{"code":"64000250","name":"高雄市湖內區","county":"高雄市","town":"湖內區","t110":29648,"t114":29295,"t115":29143,"diff":-505,"g":-1.7,"s110":2028,"s115":1759,"sDiff":-269,"sG":-13.26,"g0_5":-28.9,"g6_11":-9.6,"oldPct":20.6,"sShare":6,"medInc":435,"avgInc":622},{"code":"64000260","name":"高雄市茄萣區","county":"高雄市","town":"茄萣區","t110":29812,"t114":28732,"t115":28441,"diff":-1371,"g":-4.6,"s110":1820,"s115":1619,"sDiff":-201,"sG":-11.04,"g0_5":-23.1,"g6_11":-5.9,"oldPct":22.2,"sShare":5.7,"medInc":408,"avgInc":576},{"code":"64000270","name":"高雄市永安區","county":"高雄市","town":"永安區","t110":13618,"t114":13510,"t115":13394,"diff":-224,"g":-1.64,"s110":827,"s115":772,"sDiff":-55,"sG":-6.65,"g0_5":-19.9,"g6_11":-6.3,"oldPct":20.3,"sShare":5.8,"medInc":413,"avgInc":596},{"code":"64000280","name":"高雄市彌陀區","county":"高雄市","town":"彌陀區","t110":18627,"t114":17715,"t115":17602,"diff":-1025,"g":-5.5,"s110":1212,"s115":999,"sDiff":-213,"sG":-17.57,"g0_5":-30.2,"g6_11":-16.9,"oldPct":21.9,"sShare":5.7,"medInc":409,"avgInc":583},{"code":"64000290","name":"高雄市梓官區","county":"高雄市","town":"梓官區","t110":35117,"t114":34701,"t115":34529,"diff":-588,"g":-1.67,"s110":2151,"s115":1909,"sDiff":-242,"sG":-11.25,"g0_5":-28.4,"g6_11":-3,"oldPct":21.2,"sShare":5.5,"medInc":434,"avgInc":615},{"code":"64000300","name":"高雄市旗山區","county":"高雄市","town":"旗山區","t110":35162,"t114":33368,"t115":32960,"diff":-2202,"g":-6.26,"s110":2173,"s115":1988,"sDiff":-185,"sG":-8.51,"g0_5":-26.6,"g6_11":-1.4,"oldPct":27.7,"sShare":6,"medInc":412,"avgInc":601},{"code":"64000310","name":"高雄市美濃區","county":"高雄市","town":"美濃區","t110":37949,"t114":36074,"t115":35639,"diff":-2310,"g":-6.09,"s110":1788,"s115":1592,"sDiff":-196,"sG":-10.96,"g0_5":-25.1,"g6_11":-3.6,"oldPct":32.3,"sShare":4.5,"medInc":433,"avgInc":632},{"code":"64000320","name":"高雄市六龜區","county":"高雄市","town":"六龜區","t110":12135,"t114":11286,"t115":11038,"diff":-1097,"g":-9.04,"s110":577,"s115":476,"sDiff":-101,"sG":-17.5,"g0_5":-24.8,"g6_11":-16.2,"oldPct":29.3,"sShare":4.3,"medInc":404,"avgInc":555},{"code":"64000330","name":"高雄市甲仙區","county":"高雄市","town":"甲仙區","t110":5788,"t114":5279,"t115":5197,"diff":-591,"g":-10.21,"s110":279,"s115":213,"sDiff":-66,"sG":-23.66,"g0_5":-28.2,"g6_11":-20.4,"oldPct":29.9,"sShare":4.1,"medInc":362,"avgInc":526},{"code":"64000340","name":"高雄市杉林區","county":"高雄市","town":"杉林區","t110":11288,"t114":10569,"t115":10382,"diff":-906,"g":-8.03,"s110":486,"s115":426,"sDiff":-60,"sG":-12.35,"g0_5":-28.3,"g6_11":-16.7,"oldPct":29.6,"sShare":4.1,"medInc":374,"avgInc":515},{"code":"64000350","name":"高雄市內門區","county":"高雄市","town":"內門區","t110":13770,"t114":12519,"t115":12453,"diff":-1317,"g":-9.56,"s110":539,"s115":472,"sDiff":-67,"sG":-12.43,"g0_5":-27.4,"g6_11":-3.1,"oldPct":28.6,"sShare":3.8,"medInc":398,"avgInc":527},{"code":"64000360","name":"高雄市茂林區","county":"高雄市","town":"茂林區","t110":1874,"t114":1846,"t115":1905,"diff":31,"g":1.65,"s110":162,"s115":155,"sDiff":-7,"sG":-4.32,"g0_5":-11.2,"g6_11":9,"oldPct":12.2,"sShare":8.1,"medInc":470,"avgInc":618},{"code":"64000370","name":"高雄市桃源區","county":"高雄市","town":"桃源區","t110":4193,"t114":4151,"t115":4168,"diff":-25,"g":-0.6,"s110":396,"s115":363,"sDiff":-33,"sG":-8.33,"g0_5":-16.7,"g6_11":-9.6,"oldPct":13,"sShare":8.7,"medInc":449,"avgInc":561},{"code":"64000380","name":"高雄市那瑪夏區","county":"高雄市","town":"那瑪夏區","t110":3143,"t114":3111,"t115":3088,"diff":-55,"g":-1.75,"s110":406,"s115":334,"sDiff":-72,"sG":-17.73,"g0_5":-24.8,"g6_11":-18.1,"oldPct":11.5,"sShare":10.8,"medInc":510,"avgInc":585},{"code":"65000010","name":"新北市板橋區","county":"新北市","town":"板橋區","t110":552713,"t114":549762,"t115":547349,"diff":-5364,"g":-0.97,"s110":50389,"s115":44155,"sDiff":-6234,"sG":-12.37,"g0_5":-30.7,"g6_11":-8.7,"oldPct":21.2,"sShare":8.1,"medInc":527,"avgInc":913},{"code":"65000020","name":"新北市三重區","county":"新北市","town":"三重區","t110":381731,"t114":382778,"t115":382436,"diff":705,"g":0.18,"s110":28989,"s115":25579,"sDiff":-3410,"sG":-11.76,"g0_5":-27.9,"g6_11":-8.1,"oldPct":21.3,"sShare":6.7,"medInc":474,"avgInc":783},{"code":"65000030","name":"新北市中和區","county":"新北市","town":"中和區","t110":406140,"t114":403791,"t115":401952,"diff":-4188,"g":-1.03,"s110":28763,"s115":23593,"sDiff":-5170,"sG":-17.97,"g0_5":-32.2,"g6_11":-13,"oldPct":23.3,"sShare":5.9,"medInc":526,"avgInc":865},{"code":"65000040","name":"新北市永和區","county":"新北市","town":"永和區","t110":214967,"t114":211536,"t115":209679,"diff":-5288,"g":-2.46,"s110":17753,"s115":16134,"sDiff":-1619,"sG":-9.12,"g0_5":-31.4,"g6_11":-6.2,"oldPct":25.3,"sShare":7.7,"medInc":593,"avgInc":1007},{"code":"65000050","name":"新北市新莊區","county":"新北市","town":"新莊區","t110":421381,"t114":421239,"t115":419779,"diff":-1602,"g":-0.38,"s110":39992,"s115":36603,"sDiff":-3389,"sG":-8.47,"g0_5":-27.6,"g6_11":-4.7,"oldPct":18,"sShare":8.7,"medInc":491,"avgInc":821},{"code":"65000060","name":"新北市新店區","county":"新北市","town":"新店區","t110":299696,"t114":306884,"t115":305431,"diff":5735,"g":1.91,"s110":18801,"s115":16659,"sDiff":-2142,"sG":-11.39,"g0_5":-27.4,"g6_11":-8.2,"oldPct":24.8,"sShare":5.5,"medInc":574,"avgInc":1020},{"code":"65000070","name":"新北市樹林區","county":"新北市","town":"樹林區","t110":181903,"t114":177412,"t115":176123,"diff":-5780,"g":-3.18,"s110":16346,"s115":13743,"sDiff":-2603,"sG":-15.92,"g0_5":-33.5,"g6_11":-10.9,"oldPct":18.8,"sShare":7.8,"medInc":442,"avgInc":758},{"code":"65000080","name":"新北市鶯歌區","county":"新北市","town":"鶯歌區","t110":88131,"t114":89501,"t115":89479,"diff":1348,"g":1.53,"s110":7702,"s115":7197,"sDiff":-505,"sG":-6.56,"g0_5":-21.3,"g6_11":-1.1,"oldPct":17.2,"sShare":8,"medInc":432,"avgInc":666},{"code":"65000090","name":"新北市三峽區","county":"新北市","town":"三峽區","t110":116019,"t114":115009,"t115":115030,"diff":-989,"g":-0.85,"s110":11212,"s115":9651,"sDiff":-1561,"sG":-13.92,"g0_5":-32.4,"g6_11":-7.7,"oldPct":18.1,"sShare":8.4,"medInc":458,"avgInc":781},{"code":"65000100","name":"新北市淡水區","county":"新北市","town":"淡水區","t110":185197,"t114":208004,"t115":210196,"diff":24999,"g":13.5,"s110":14408,"s115":14111,"sDiff":-297,"sG":-2.06,"g0_5":-19,"g6_11":1.7,"oldPct":20.8,"sShare":6.7,"medInc":514,"avgInc":852},{"code":"65000110","name":"新北市汐止區","county":"新北市","town":"汐止區","t110":205990,"t114":212758,"t115":212244,"diff":6254,"g":3.04,"s110":13799,"s115":12388,"sDiff":-1411,"sG":-10.23,"g0_5":-26.3,"g6_11":-6.7,"oldPct":20,"sShare":5.8,"medInc":516,"avgInc":867},{"code":"65000120","name":"新北市瑞芳區","county":"新北市","town":"瑞芳區","t110":38449,"t114":35623,"t115":35087,"diff":-3362,"g":-8.74,"s110":2229,"s115":1765,"sDiff":-464,"sG":-20.82,"g0_5":-40.4,"g6_11":-16.2,"oldPct":24.7,"sShare":5,"medInc":377,"avgInc":549},{"code":"65000130","name":"新北市土城區","county":"新北市","town":"土城區","t110":237484,"t114":242713,"t115":242819,"diff":5335,"g":2.25,"s110":19381,"s115":18675,"sDiff":-706,"sG":-3.64,"g0_5":-22.8,"g6_11":1.2,"oldPct":18.7,"sShare":7.7,"medInc":463,"avgInc":746},{"code":"65000140","name":"新北市蘆洲區","county":"新北市","town":"蘆洲區","t110":201489,"t114":196371,"t115":195133,"diff":-6356,"g":-3.15,"s110":17492,"s115":14857,"sDiff":-2635,"sG":-15.06,"g0_5":-30.1,"g6_11":-12.6,"oldPct":17.7,"sShare":7.6,"medInc":446,"avgInc":749},{"code":"65000150","name":"新北市五股區","county":"新北市","town":"五股區","t110":90465,"t114":94717,"t115":95244,"diff":4779,"g":5.28,"s110":7104,"s115":6797,"sDiff":-307,"sG":-4.32,"g0_5":-12.7,"g6_11":-2.8,"oldPct":16.4,"sShare":7.1,"medInc":440,"avgInc":686},{"code":"65000160","name":"新北市泰山區","county":"新北市","town":"泰山區","t110":77451,"t114":78083,"t115":78388,"diff":937,"g":1.21,"s110":7232,"s115":5960,"sDiff":-1272,"sG":-17.59,"g0_5":-26.4,"g6_11":-16.8,"oldPct":17.5,"sShare":7.6,"medInc":488,"avgInc":793},{"code":"65000170","name":"新北市林口區","county":"新北市","town":"林口區","t110":124628,"t114":138461,"t115":139499,"diff":14871,"g":11.93,"s110":15981,"s115":16769,"sDiff":788,"sG":4.93,"g0_5":-15.7,"g6_11":9.1,"oldPct":15.3,"sShare":12,"medInc":682,"avgInc":1198},{"code":"65000180","name":"新北市深坑區","county":"新北市","town":"深坑區","t110":23646,"t114":23639,"t115":23495,"diff":-151,"g":-0.64,"s110":1392,"s115":1249,"sDiff":-143,"sG":-10.27,"g0_5":-32.8,"g6_11":-4.4,"oldPct":22,"sShare":5.3,"medInc":473,"avgInc":755},{"code":"65000190","name":"新北市石碇區","county":"新北市","town":"石碇區","t110":7487,"t114":6917,"t115":6830,"diff":-657,"g":-8.78,"s110":324,"s115":213,"sDiff":-111,"sG":-34.26,"g0_5":-36.5,"g6_11":-29.3,"oldPct":30.9,"sShare":3.1,"medInc":376,"avgInc":612},{"code":"65000200","name":"新北市坪林區","county":"新北市","town":"坪林區","t110":6619,"t114":6163,"t115":6046,"diff":-573,"g":-8.66,"s110":273,"s115":212,"sDiff":-61,"sG":-22.34,"g0_5":-36.7,"g6_11":-19,"oldPct":33.4,"sShare":3.5,"medInc":412,"avgInc":603},{"code":"65000210","name":"新北市三芝區","county":"新北市","town":"三芝區","t110":22357,"t114":22061,"t115":21957,"diff":-400,"g":-1.79,"s110":1242,"s115":1094,"sDiff":-148,"sG":-11.92,"g0_5":-34.5,"g6_11":-8.5,"oldPct":25.9,"sShare":5,"medInc":340,"avgInc":535},{"code":"65000220","name":"新北市石門區","county":"新北市","town":"石門區","t110":11193,"t114":9994,"t115":9845,"diff":-1348,"g":-12.04,"s110":547,"s115":376,"sDiff":-171,"sG":-31.26,"g0_5":-36,"g6_11":-33.8,"oldPct":24.6,"sShare":3.8,"medInc":366,"avgInc":565},{"code":"65000230","name":"新北市八里區","county":"新北市","town":"八里區","t110":40178,"t114":43495,"t115":43489,"diff":3311,"g":8.24,"s110":2980,"s115":2847,"sDiff":-133,"sG":-4.46,"g0_5":-24,"g6_11":2.3,"oldPct":18.8,"sShare":6.5,"medInc":435,"avgInc":676},{"code":"65000240","name":"新北市平溪區","county":"新北市","town":"平溪區","t110":4333,"t114":3900,"t115":3861,"diff":-472,"g":-10.89,"s110":134,"s115":69,"sDiff":-65,"sG":-48.51,"g0_5":-35.9,"g6_11":-32.1,"oldPct":37.4,"sShare":1.8,"medInc":353,"avgInc":550},{"code":"65000250","name":"新北市雙溪區","county":"新北市","town":"雙溪區","t110":8235,"t114":7442,"t115":7331,"diff":-904,"g":-10.98,"s110":321,"s115":230,"sDiff":-91,"sG":-28.35,"g0_5":-37.5,"g6_11":-27.3,"oldPct":34.3,"sShare":3.1,"medInc":400,"avgInc":580},{"code":"65000260","name":"新北市貢寮區","county":"新北市","town":"貢寮區","t110":11534,"t114":10445,"t115":10240,"diff":-1294,"g":-11.22,"s110":353,"s115":276,"sDiff":-77,"sG":-21.81,"g0_5":-34.1,"g6_11":-24.6,"oldPct":28.4,"sShare":2.7,"medInc":378,"avgInc":567},{"code":"65000270","name":"新北市金山區","county":"新北市","town":"金山區","t110":20844,"t114":19725,"t115":19512,"diff":-1332,"g":-6.39,"s110":1158,"s115":941,"sDiff":-217,"sG":-18.74,"g0_5":-30.8,"g6_11":-14.9,"oldPct":22.6,"sShare":4.8,"medInc":382,"avgInc":569},{"code":"65000280","name":"新北市萬里區","county":"新北市","town":"萬里區","t110":21462,"t114":20209,"t115":19970,"diff":-1492,"g":-6.95,"s110":1184,"s115":867,"sDiff":-317,"sG":-26.77,"g0_5":-36.6,"g6_11":-24.9,"oldPct":25.9,"sShare":4.3,"medInc":388,"avgInc":562},{"code":"65000290","name":"新北市烏來區","county":"新北市","town":"烏來區","t110":6391,"t114":6199,"t115":6128,"diff":-263,"g":-4.12,"s110":609,"s115":569,"sDiff":-40,"sG":-6.57,"g0_5":-17.6,"g6_11":-3.7,"oldPct":20.2,"sShare":9.3,"medInc":469,"avgInc":663},{"code":"66000010","name":"臺中市中區","county":"臺中市","town":"中區","t110":17689,"t114":18029,"t115":18011,"diff":322,"g":1.82,"s110":2297,"s115":2508,"sDiff":211,"sG":9.19,"g0_5":-36.4,"g6_11":22.5,"oldPct":23.7,"sShare":13.9,"medInc":452,"avgInc":798},{"code":"66000020","name":"臺中市東區","county":"臺中市","town":"東區","t110":75588,"t114":77745,"t115":77642,"diff":2054,"g":2.72,"s110":5979,"s115":5661,"sDiff":-318,"sG":-5.32,"g0_5":-25.4,"g6_11":-2.7,"oldPct":20.5,"sShare":7.3,"medInc":448,"avgInc":741},{"code":"66000030","name":"臺中市南區","county":"臺中市","town":"南區","t110":126008,"t114":128309,"t115":128416,"diff":2408,"g":1.91,"s110":11156,"s115":9234,"sDiff":-1922,"sG":-17.23,"g0_5":-32.1,"g6_11":-13.2,"oldPct":16.8,"sShare":7.2,"medInc":520,"avgInc":832},{"code":"66000040","name":"臺中市西區","county":"臺中市","town":"西區","t110":112740,"t114":113288,"t115":112576,"diff":-164,"g":-0.15,"s110":11493,"s115":10999,"sDiff":-494,"sG":-4.3,"g0_5":-32.9,"g6_11":3.1,"oldPct":21.6,"sShare":9.8,"medInc":568,"avgInc":1024},{"code":"66000050","name":"臺中市北區","county":"臺中市","town":"北區","t110":143917,"t114":143537,"t115":143045,"diff":-872,"g":-0.61,"s110":11799,"s115":10158,"sDiff":-1641,"sG":-13.91,"g0_5":-30.1,"g6_11":-7.6,"oldPct":22.1,"sShare":7.1,"medInc":494,"avgInc":862},{"code":"66000060","name":"臺中市西屯區","county":"臺中市","town":"西屯區","t110":230888,"t114":238052,"t115":238568,"diff":7680,"g":3.33,"s110":25274,"s115":22608,"sDiff":-2666,"sG":-10.55,"g0_5":-24,"g6_11":-6.9,"oldPct":16.3,"sShare":9.5,"medInc":581,"avgInc":1110},{"code":"66000070","name":"臺中市南屯區","county":"臺中市","town":"南屯區","t110":176782,"t114":186105,"t115":186094,"diff":9312,"g":5.27,"s110":20086,"s115":19091,"sDiff":-995,"sG":-4.95,"g0_5":-20,"g6_11":-1,"oldPct":14.5,"sShare":10.3,"medInc":635,"avgInc":1094},{"code":"66000080","name":"臺中市北屯區","county":"臺中市","town":"北屯區","t110":290653,"t114":317182,"t115":319081,"diff":28428,"g":9.78,"s110":29449,"s115":31091,"sDiff":1642,"sG":5.58,"g0_5":-12.7,"g6_11":11.2,"oldPct":16.4,"sShare":9.7,"medInc":537,"avgInc":890},{"code":"66000090","name":"臺中市豐原區","county":"臺中市","town":"豐原區","t110":164726,"t114":161771,"t115":160762,"diff":-3964,"g":-2.41,"s110":16098,"s115":14398,"sDiff":-1700,"sG":-10.56,"g0_5":-29.4,"g6_11":-5.5,"oldPct":19.9,"sShare":9,"medInc":434,"avgInc":716},{"code":"66000100","name":"臺中市東勢區","county":"臺中市","town":"東勢區","t110":48333,"t114":46488,"t115":46059,"diff":-2274,"g":-4.7,"s110":3214,"s115":2752,"sDiff":-462,"sG":-14.37,"g0_5":-30,"g6_11":-7.5,"oldPct":26.2,"sShare":6,"medInc":407,"avgInc":606},{"code":"66000110","name":"臺中市大甲區","county":"臺中市","town":"大甲區","t110":75516,"t114":73108,"t115":72433,"diff":-3083,"g":-4.08,"s110":7361,"s115":6783,"sDiff":-578,"sG":-7.85,"g0_5":-28.5,"g6_11":-4.4,"oldPct":20,"sShare":9.4,"medInc":436,"avgInc":693},{"code":"66000120","name":"臺中市清水區","county":"臺中市","town":"清水區","t110":88366,"t114":90640,"t115":90396,"diff":2030,"g":2.3,"s110":7926,"s115":7438,"sDiff":-488,"sG":-6.16,"g0_5":-22.7,"g6_11":-2.1,"oldPct":18.7,"sShare":8.2,"medInc":465,"avgInc":687},{"code":"66000130","name":"臺中市沙鹿區","county":"臺中市","town":"沙鹿區","t110":96039,"t114":101419,"t115":101911,"diff":5872,"g":6.11,"s110":11066,"s115":10862,"sDiff":-204,"sG":-1.84,"g0_5":-23.6,"g6_11":5.1,"oldPct":14.9,"sShare":10.7,"medInc":515,"avgInc":820},{"code":"66000140","name":"臺中市梧棲區","county":"臺中市","town":"梧棲區","t110":59517,"t114":65685,"t115":67903,"diff":8386,"g":14.09,"s110":6157,"s115":6356,"sDiff":199,"sG":3.23,"g0_5":-12.4,"g6_11":10.3,"oldPct":15.3,"sShare":9.4,"medInc":474,"avgInc":727},{"code":"66000150","name":"臺中市后里區","county":"臺中市","town":"后里區","t110":53961,"t114":52754,"t115":52498,"diff":-1463,"g":-2.71,"s110":4910,"s115":4287,"sDiff":-623,"sG":-12.69,"g0_5":-29.6,"g6_11":-7.3,"oldPct":19.6,"sShare":8.2,"medInc":443,"avgInc":653},{"code":"66000160","name":"臺中市神岡區","county":"臺中市","town":"神岡區","t110":64841,"t114":63271,"t115":62994,"diff":-1847,"g":-2.85,"s110":5459,"s115":4662,"sDiff":-797,"sG":-14.6,"g0_5":-30,"g6_11":-8.7,"oldPct":19.4,"sShare":7.4,"medInc":410,"avgInc":639},{"code":"66000170","name":"臺中市潭子區","county":"臺中市","town":"潭子區","t110":109270,"t114":109314,"t115":109143,"diff":-127,"g":-0.12,"s110":10005,"s115":8764,"sDiff":-1241,"sG":-12.4,"g0_5":-28.5,"g6_11":-7.2,"oldPct":17.2,"sShare":8,"medInc":439,"avgInc":688},{"code":"66000180","name":"臺中市大雅區","county":"臺中市","town":"大雅區","t110":95521,"t114":94741,"t115":94107,"diff":-1414,"g":-1.48,"s110":9762,"s115":8819,"sDiff":-943,"sG":-9.66,"g0_5":-27.1,"g6_11":-5.3,"oldPct":15.9,"sShare":9.4,"medInc":460,"avgInc":723},{"code":"66000190","name":"臺中市新社區","county":"臺中市","town":"新社區","t110":23650,"t114":22579,"t115":22416,"diff":-1234,"g":-5.22,"s110":1572,"s115":1275,"sDiff":-297,"sG":-18.89,"g0_5":-31.9,"g6_11":-16.7,"oldPct":24.5,"sShare":5.7,"medInc":397,"avgInc":592},{"code":"66000200","name":"臺中市石岡區","county":"臺中市","town":"石岡區","t110":14419,"t114":13668,"t115":13548,"diff":-871,"g":-6.04,"s110":879,"s115":741,"sDiff":-138,"sG":-15.7,"g0_5":-24.1,"g6_11":-22,"oldPct":25.6,"sShare":5.5,"medInc":399,"avgInc":611},{"code":"66000210","name":"臺中市外埔區","county":"臺中市","town":"外埔區","t110":31564,"t114":30823,"t115":30632,"diff":-932,"g":-2.95,"s110":2396,"s115":1985,"sDiff":-411,"sG":-17.15,"g0_5":-31,"g6_11":-5.7,"oldPct":19.5,"sShare":6.5,"medInc":449,"avgInc":630},{"code":"66000220","name":"臺中市大安區","county":"臺中市","town":"大安區","t110":18485,"t114":17487,"t115":17333,"diff":-1152,"g":-6.23,"s110":1150,"s115":950,"sDiff":-200,"sG":-17.39,"g0_5":-32.7,"g6_11":-6.2,"oldPct":22.1,"sShare":5.5,"medInc":403,"avgInc":597},{"code":"66000230","name":"臺中市烏日區","county":"臺中市","town":"烏日區","t110":77245,"t114":82248,"t115":82368,"diff":5123,"g":6.63,"s110":7386,"s115":7553,"sDiff":167,"sG":2.26,"g0_5":-14,"g6_11":7.4,"oldPct":16.7,"sShare":9.2,"medInc":452,"avgInc":753},{"code":"66000240","name":"臺中市大肚區","county":"臺中市","town":"大肚區","t110":56458,"t114":55255,"t115":54794,"diff":-1664,"g":-2.95,"s110":4842,"s115":3985,"sDiff":-857,"sG":-17.7,"g0_5":-30.6,"g6_11":-16.3,"oldPct":19.7,"sShare":7.3,"medInc":430,"avgInc":636},{"code":"66000250","name":"臺中市龍井區","county":"臺中市","town":"龍井區","t110":77976,"t114":79241,"t115":79332,"diff":1356,"g":1.74,"s110":7344,"s115":6520,"sDiff":-824,"sG":-11.22,"g0_5":-23.4,"g6_11":-5.7,"oldPct":15.9,"sShare":8.2,"medInc":457,"avgInc":710},{"code":"66000260","name":"臺中市霧峰區","county":"臺中市","town":"霧峰區","t110":64602,"t114":62627,"t115":62041,"diff":-2561,"g":-3.96,"s110":5324,"s115":4403,"sDiff":-921,"sG":-17.3,"g0_5":-36.4,"g6_11":-8.2,"oldPct":21.7,"sShare":7.1,"medInc":398,"avgInc":627},{"code":"66000270","name":"臺中市太平區","county":"臺中市","town":"太平區","t110":195613,"t114":201536,"t115":201762,"diff":6149,"g":3.14,"s110":18785,"s115":17977,"sDiff":-808,"sG":-4.3,"g0_5":-23.6,"g6_11":1.5,"oldPct":17.1,"sShare":8.9,"medInc":410,"avgInc":664},{"code":"66000280","name":"臺中市大里區","county":"臺中市","town":"大里區","t110":212253,"t114":211094,"t115":210097,"diff":-2156,"g":-1.02,"s110":21488,"s115":18997,"sDiff":-2491,"sG":-11.59,"g0_5":-29.2,"g6_11":-7.5,"oldPct":17.5,"sShare":9,"medInc":427,"avgInc":684},{"code":"66000290","name":"臺中市和平區","county":"臺中市","town":"和平區","t110":10870,"t114":10469,"t115":10405,"diff":-465,"g":-4.28,"s110":706,"s115":685,"sDiff":-21,"sG":-2.97,"g0_5":-13.5,"g6_11":2,"oldPct":24.2,"sShare":6.6,"medInc":421,"avgInc":575},{"code":"67000010","name":"臺南市新營區","county":"臺南市","town":"新營區","t110":75506,"t114":74493,"t115":74043,"diff":-1463,"g":-1.94,"s110":6430,"s115":6002,"sDiff":-428,"sG":-6.66,"g0_5":-24.5,"g6_11":-0.6,"oldPct":22.6,"sShare":8.1,"medInc":545,"avgInc":786},{"code":"67000020","name":"臺南市鹽水區","county":"臺南市","town":"鹽水區","t110":24777,"t114":23635,"t115":23278,"diff":-1499,"g":-6.05,"s110":1575,"s115":1328,"sDiff":-247,"sG":-15.68,"g0_5":-31.4,"g6_11":-11.6,"oldPct":25.5,"sShare":5.7,"medInc":453,"avgInc":644},{"code":"67000030","name":"臺南市白河區","county":"臺南市","town":"白河區","t110":26693,"t114":24948,"t115":24661,"diff":-2032,"g":-7.61,"s110":1433,"s115":1178,"sDiff":-255,"sG":-17.79,"g0_5":-30.7,"g6_11":-7.5,"oldPct":30.7,"sShare":4.8,"medInc":414,"avgInc":606},{"code":"67000040","name":"臺南市柳營區","county":"臺南市","town":"柳營區","t110":20618,"t114":19831,"t115":19636,"diff":-982,"g":-4.76,"s110":1090,"s115":1040,"sDiff":-50,"sG":-4.59,"g0_5":-20.3,"g6_11":5.6,"oldPct":26.5,"sShare":5.3,"medInc":469,"avgInc":658},{"code":"67000050","name":"臺南市後壁區","county":"臺南市","town":"後壁區","t110":22322,"t114":20840,"t115":20566,"diff":-1756,"g":-7.87,"s110":1053,"s115":832,"sDiff":-221,"sG":-20.99,"g0_5":-34.1,"g6_11":-20.7,"oldPct":31.2,"sShare":4,"medInc":457,"avgInc":642},{"code":"67000060","name":"臺南市東山區","county":"臺南市","town":"東山區","t110":19788,"t114":18490,"t115":18208,"diff":-1580,"g":-7.98,"s110":967,"s115":828,"sDiff":-139,"sG":-14.37,"g0_5":-30.8,"g6_11":-0.5,"oldPct":29.9,"sShare":4.5,"medInc":420,"avgInc":593},{"code":"67000070","name":"臺南市麻豆區","county":"臺南市","town":"麻豆區","t110":43373,"t114":42873,"t115":42550,"diff":-823,"g":-1.9,"s110":3290,"s115":2956,"sDiff":-334,"sG":-10.15,"g0_5":-19.4,"g6_11":-7.9,"oldPct":24.5,"sShare":6.9,"medInc":496,"avgInc":743},{"code":"67000080","name":"臺南市下營區","county":"臺南市","town":"下營區","t110":23062,"t114":21742,"t115":21494,"diff":-1568,"g":-6.8,"s110":1444,"s115":1245,"sDiff":-199,"sG":-13.78,"g0_5":-25,"g6_11":-11.5,"oldPct":28,"sShare":5.8,"medInc":454,"avgInc":637},{"code":"67000090","name":"臺南市六甲區","county":"臺南市","town":"六甲區","t110":21488,"t114":20880,"t115":20633,"diff":-855,"g":-3.98,"s110":1495,"s115":1249,"sDiff":-246,"sG":-16.45,"g0_5":-29.4,"g6_11":-13.5,"oldPct":24.8,"sShare":6.1,"medInc":453,"avgInc":644},{"code":"67000100","name":"臺南市官田區","county":"臺南市","town":"官田區","t110":21035,"t114":20527,"t115":20469,"diff":-566,"g":-2.69,"s110":1264,"s115":1207,"sDiff":-57,"sG":-4.51,"g0_5":-15.5,"g6_11":0.3,"oldPct":22.9,"sShare":5.9,"medInc":484,"avgInc":645},{"code":"67000110","name":"臺南市大內區","county":"臺南市","town":"大內區","t110":9048,"t114":8427,"t115":8335,"diff":-713,"g":-7.88,"s110":391,"s115":318,"sDiff":-73,"sG":-18.67,"g0_5":-32.8,"g6_11":-10.6,"oldPct":31.8,"sShare":3.8,"medInc":390,"avgInc":543},{"code":"67000120","name":"臺南市佳里區","county":"臺南市","town":"佳里區","t110":58482,"t114":58328,"t115":58045,"diff":-437,"g":-0.75,"s110":4664,"s115":4525,"sDiff":-139,"sG":-2.98,"g0_5":-23.6,"g6_11":2.8,"oldPct":22,"sShare":7.8,"medInc":478,"avgInc":717},{"code":"67000130","name":"臺南市學甲區","county":"臺南市","town":"學甲區","t110":24981,"t114":24365,"t115":24261,"diff":-720,"g":-2.88,"s110":1498,"s115":1385,"sDiff":-113,"sG":-7.54,"g0_5":-14.3,"g6_11":-8,"oldPct":24.7,"sShare":5.7,"medInc":461,"avgInc":628},{"code":"67000140","name":"臺南市西港區","county":"臺南市","town":"西港區","t110":24495,"t114":24811,"t115":24731,"diff":236,"g":0.96,"s110":1622,"s115":1686,"sDiff":64,"sG":3.95,"g0_5":-13.5,"g6_11":13,"oldPct":21.9,"sShare":6.8,"medInc":470,"avgInc":657},{"code":"67000150","name":"臺南市七股區","county":"臺南市","town":"七股區","t110":21757,"t114":20493,"t115":20235,"diff":-1522,"g":-7,"s110":1206,"s115":986,"sDiff":-220,"sG":-18.24,"g0_5":-23.9,"g6_11":-21.5,"oldPct":25.3,"sShare":4.9,"medInc":396,"avgInc":588},{"code":"67000160","name":"臺南市將軍區","county":"臺南市","town":"將軍區","t110":18843,"t114":17598,"t115":17376,"diff":-1467,"g":-7.79,"s110":884,"s115":681,"sDiff":-203,"sG":-22.96,"g0_5":-34.4,"g6_11":-15.3,"oldPct":28,"sShare":3.9,"medInc":385,"avgInc":564},{"code":"67000170","name":"臺南市北門區","county":"臺南市","town":"北門區","t110":10397,"t114":9436,"t115":9301,"diff":-1096,"g":-10.54,"s110":460,"s115":306,"sDiff":-154,"sG":-33.48,"g0_5":-53.2,"g6_11":-22,"oldPct":26.4,"sShare":3.3,"medInc":410,"avgInc":590},{"code":"67000180","name":"臺南市新化區","county":"臺南市","town":"新化區","t110":42809,"t114":41932,"t115":41731,"diff":-1078,"g":-2.52,"s110":3044,"s115":2881,"sDiff":-163,"sG":-5.35,"g0_5":-20.9,"g6_11":-3.9,"oldPct":22.8,"sShare":6.9,"medInc":452,"avgInc":695},{"code":"67000190","name":"臺南市善化區","county":"臺南市","town":"善化區","t110":51265,"t114":53888,"t115":53985,"diff":2720,"g":5.31,"s110":5724,"s115":6003,"sDiff":279,"sG":4.87,"g0_5":-15.8,"g6_11":11.1,"oldPct":17.4,"sShare":11.1,"medInc":659,"avgInc":1161},{"code":"67000200","name":"臺南市新市區","county":"臺南市","town":"新市區","t110":37546,"t114":38279,"t115":38219,"diff":673,"g":1.79,"s110":3721,"s115":3488,"sDiff":-233,"sG":-6.26,"g0_5":-21,"g6_11":-3.8,"oldPct":17.6,"sShare":9.1,"medInc":534,"avgInc":843},{"code":"67000210","name":"臺南市安定區","county":"臺南市","town":"安定區","t110":30105,"t114":29783,"t115":29661,"diff":-444,"g":-1.47,"s110":2196,"s115":1941,"sDiff":-255,"sG":-11.61,"g0_5":-24.2,"g6_11":-7.7,"oldPct":20.4,"sShare":6.5,"medInc":500,"avgInc":731},{"code":"67000220","name":"臺南市山上區","county":"臺南市","town":"山上區","t110":6996,"t114":6796,"t115":6696,"diff":-300,"g":-4.29,"s110":371,"s115":359,"sDiff":-12,"sG":-3.23,"g0_5":-15.5,"g6_11":4.3,"oldPct":25.7,"sShare":5.4,"medInc":424,"avgInc":592},{"code":"67000230","name":"臺南市玉井區","county":"臺南市","town":"玉井區","t110":13342,"t114":12674,"t115":12526,"diff":-816,"g":-6.12,"s110":745,"s115":628,"sDiff":-117,"sG":-15.7,"g0_5":-30,"g6_11":-9.2,"oldPct":30.1,"sShare":5,"medInc":423,"avgInc":619},{"code":"67000240","name":"臺南市楠西區","county":"臺南市","town":"楠西區","t110":9031,"t114":8392,"t115":8243,"diff":-788,"g":-8.73,"s110":435,"s115":287,"sDiff":-148,"sG":-34.02,"g0_5":-38.7,"g6_11":-30.4,"oldPct":31.3,"sShare":3.5,"medInc":393,"avgInc":547},{"code":"67000250","name":"臺南市南化區","county":"臺南市","town":"南化區","t110":8264,"t114":7606,"t115":7485,"diff":-779,"g":-9.43,"s110":436,"s115":344,"sDiff":-92,"sG":-21.1,"g0_5":-37,"g6_11":-12.9,"oldPct":30.7,"sShare":4.6,"medInc":424,"avgInc":571},{"code":"67000260","name":"臺南市左鎮區","county":"臺南市","town":"左鎮區","t110":4428,"t114":4095,"t115":4037,"diff":-391,"g":-8.83,"s110":138,"s115":121,"sDiff":-17,"sG":-12.32,"g0_5":-14.1,"g6_11":-20.4,"oldPct":35.1,"sShare":3,"medInc":357,"avgInc":529},{"code":"67000270","name":"臺南市仁德區","county":"臺南市","town":"仁德區","t110":76497,"t114":77496,"t115":77841,"diff":1344,"g":1.76,"s110":5927,"s115":5437,"sDiff":-490,"sG":-8.27,"g0_5":-28.5,"g6_11":0.6,"oldPct":20,"sShare":7,"medInc":488,"avgInc":760},{"code":"67000280","name":"臺南市歸仁區","county":"臺南市","town":"歸仁區","t110":68001,"t114":70574,"t115":71186,"diff":3185,"g":4.68,"s110":5948,"s115":6051,"sDiff":103,"sG":1.73,"g0_5":-19,"g6_11":6.1,"oldPct":19,"sShare":8.5,"medInc":472,"avgInc":724},{"code":"67000290","name":"臺南市關廟區","county":"臺南市","town":"關廟區","t110":33860,"t114":33198,"t115":32935,"diff":-925,"g":-2.73,"s110":2135,"s115":1961,"sDiff":-174,"sG":-8.15,"g0_5":-25.7,"g6_11":-3.7,"oldPct":24.9,"sShare":6,"medInc":433,"avgInc":631},{"code":"67000300","name":"臺南市龍崎區","county":"臺南市","town":"龍崎區","t110":3668,"t114":3234,"t115":3160,"diff":-508,"g":-13.85,"s110":107,"s115":64,"sDiff":-43,"sG":-40.19,"g0_5":-38.7,"g6_11":-43.1,"oldPct":37.7,"sShare":2,"medInc":387,"avgInc":602},{"code":"67000310","name":"臺南市永康區","county":"臺南市","town":"永康區","t110":234624,"t114":235805,"t115":235899,"diff":1275,"g":0.54,"s110":21524,"s115":19092,"sDiff":-2432,"sG":-11.3,"g0_5":-26.4,"g6_11":-8.6,"oldPct":17,"sShare":8.1,"medInc":501,"avgInc":831},{"code":"67000320","name":"臺南市東區","county":"臺南市","town":"東區","t110":182489,"t114":180856,"t115":179467,"diff":-3022,"g":-1.66,"s110":18328,"s115":16967,"sDiff":-1361,"sG":-7.43,"g0_5":-27.4,"g6_11":-1.4,"oldPct":20.7,"sShare":9.5,"medInc":567,"avgInc":1027},{"code":"67000330","name":"臺南市南區","county":"臺南市","town":"南區","t110":122345,"t114":119121,"t115":118231,"diff":-4114,"g":-3.36,"s110":7819,"s115":6650,"sDiff":-1169,"sG":-14.95,"g0_5":-29,"g6_11":-8.9,"oldPct":23.9,"sShare":5.6,"medInc":450,"avgInc":711},{"code":"67000340","name":"臺南市北區","county":"臺南市","town":"北區","t110":127913,"t114":125439,"t115":125012,"diff":-2901,"g":-2.27,"s110":10363,"s115":8654,"sDiff":-1709,"sG":-16.49,"g0_5":-32.7,"g6_11":-10.8,"oldPct":21.5,"sShare":6.9,"medInc":538,"avgInc":954},{"code":"67000350","name":"臺南市安南區","county":"臺南市","town":"安南區","t110":197061,"t114":204534,"t115":204707,"diff":7646,"g":3.88,"s110":19206,"s115":18452,"sDiff":-754,"sG":-3.93,"g0_5":-18.7,"g6_11":0.4,"oldPct":16.7,"sShare":9,"medInc":464,"avgInc":751},{"code":"67000360","name":"臺南市安平區","county":"臺南市","town":"安平區","t110":67446,"t114":71256,"t115":71958,"diff":4512,"g":6.69,"s110":5784,"s115":5321,"sDiff":-463,"sG":-8,"g0_5":-23.1,"g6_11":-3.7,"oldPct":16.4,"sShare":7.4,"medInc":521,"avgInc":913},{"code":"67000370","name":"臺南市中西區","county":"臺南市","town":"中西區","t110":77704,"t114":75802,"t115":74512,"diff":-3192,"g":-4.11,"s110":8924,"s115":8234,"sDiff":-690,"sG":-7.73,"g0_5":-24.7,"g6_11":-5.4,"oldPct":23.6,"sShare":11.1,"medInc":558,"avgInc":1015},{"code":"68000010","name":"桃園市桃園區","county":"桃園市","town":"桃園區","t110":458847,"t114":478487,"t115":478459,"diff":19612,"g":4.27,"s110":46954,"s115":44441,"sDiff":-2513,"sG":-5.35,"g0_5":-22.6,"g6_11":-2.5,"oldPct":17.2,"sShare":9.3,"medInc":566,"avgInc":959},{"code":"68000020","name":"桃園市中壢區","county":"桃園市","town":"中壢區","t110":422529,"t114":439213,"t115":438835,"diff":16306,"g":3.86,"s110":42372,"s115":40781,"sDiff":-1591,"sG":-3.75,"g0_5":-25.3,"g6_11":1.1,"oldPct":17.2,"sShare":9.3,"medInc":525,"avgInc":863},{"code":"68000030","name":"桃園市大溪區","county":"桃園市","town":"大溪區","t110":94870,"t114":93799,"t115":93278,"diff":-1592,"g":-1.68,"s110":8443,"s115":7275,"sDiff":-1168,"sG":-13.83,"g0_5":-32.6,"g6_11":-6.5,"oldPct":20.5,"sShare":7.8,"medInc":457,"avgInc":694},{"code":"68000040","name":"桃園市楊梅區","county":"桃園市","town":"楊梅區","t110":176757,"t114":182837,"t115":183153,"diff":6396,"g":3.62,"s110":17466,"s115":16469,"sDiff":-997,"sG":-5.71,"g0_5":-29.2,"g6_11":1.8,"oldPct":16.7,"sShare":9,"medInc":489,"avgInc":755},{"code":"68000050","name":"桃園市蘆竹區","county":"桃園市","town":"蘆竹區","t110":166394,"t114":170556,"t115":170858,"diff":4464,"g":2.68,"s110":18016,"s115":15310,"sDiff":-2706,"sG":-15.02,"g0_5":-30.2,"g6_11":-11.6,"oldPct":15.2,"sShare":9,"medInc":593,"avgInc":955},{"code":"68000060","name":"桃園市大園區","county":"桃園市","town":"大園區","t110":92172,"t114":89713,"t115":91749,"diff":-423,"g":-0.46,"s110":8502,"s115":8049,"sDiff":-453,"sG":-5.33,"g0_5":-18.8,"g6_11":-2.3,"oldPct":16.1,"sShare":8.8,"medInc":460,"avgInc":669},{"code":"68000070","name":"桃園市龜山區","county":"桃園市","town":"龜山區","t110":166767,"t114":188328,"t115":190506,"diff":23739,"g":14.23,"s110":14951,"s115":15346,"sDiff":395,"sG":2.64,"g0_5":-13.4,"g6_11":6.4,"oldPct":17.1,"sShare":8.1,"medInc":518,"avgInc":836},{"code":"68000080","name":"桃園市八德區","county":"桃園市","town":"八德區","t110":209665,"t114":216058,"t115":216891,"diff":7226,"g":3.45,"s110":20513,"s115":19977,"sDiff":-536,"sG":-2.61,"g0_5":-27.2,"g6_11":3.2,"oldPct":17.4,"sShare":9.2,"medInc":469,"avgInc":738},{"code":"68000090","name":"桃園市龍潭區","county":"桃園市","town":"龍潭區","t110":124442,"t114":127360,"t115":126607,"diff":2165,"g":1.74,"s110":11293,"s115":10479,"sDiff":-814,"sG":-7.21,"g0_5":-29.5,"g6_11":-0.1,"oldPct":19.6,"sShare":8.3,"medInc":487,"avgInc":777},{"code":"68000100","name":"桃園市平鎮區","county":"桃園市","town":"平鎮區","t110":228203,"t114":228210,"t115":226901,"diff":-1302,"g":-0.57,"s110":22607,"s115":20528,"sDiff":-2079,"sG":-9.2,"g0_5":-30.4,"g6_11":-4.6,"oldPct":17.7,"sShare":9,"medInc":513,"avgInc":786},{"code":"68000110","name":"桃園市新屋區","county":"桃園市","town":"新屋區","t110":49094,"t114":49723,"t115":49752,"diff":658,"g":1.34,"s110":3633,"s115":3625,"sDiff":-8,"sG":-0.22,"g0_5":-19.6,"g6_11":2.8,"oldPct":22.1,"sShare":7.3,"medInc":441,"avgInc":630},{"code":"68000120","name":"桃園市觀音區","county":"桃園市","town":"觀音區","t110":69995,"t114":77526,"t115":78376,"diff":8381,"g":11.97,"s110":6029,"s115":6616,"sDiff":587,"sG":9.74,"g0_5":-10,"g6_11":19.7,"oldPct":15.9,"sShare":8.4,"medInc":450,"avgInc":627},{"code":"68000130","name":"桃園市復興區","county":"桃園市","town":"復興區","t110":12656,"t114":13296,"t115":13246,"diff":590,"g":4.66,"s110":1282,"s115":1297,"sDiff":15,"sG":1.17,"g0_5":-10.5,"g6_11":8.4,"oldPct":16.4,"sShare":9.8,"medInc":403,"avgInc":534},{"code":"09020010","name":"金門縣金城鎮","county":"金門縣","town":"金城鎮","t110":42845,"t114":40998,"t115":40234,"diff":-2611,"g":-6.09,"s110":2744,"s115":2291,"sDiff":-453,"sG":-16.51,"g0_5":-39.8,"g6_11":-11.3,"oldPct":22,"sShare":5.7,"medInc":563,"avgInc":829},{"code":"09020030","name":"金門縣金湖鎮","county":"金門縣","town":"金湖鎮","t110":30593,"t114":30545,"t115":30166,"diff":-427,"g":-1.4,"s110":1897,"s115":1788,"sDiff":-109,"sG":-5.75,"g0_5":-28.6,"g6_11":0.5,"oldPct":19.5,"sShare":5.9,"medInc":595,"avgInc":810},{"code":"09020020","name":"金門縣金沙鎮","county":"金門縣","town":"金沙鎮","t110":20785,"t114":19840,"t115":19556,"diff":-1229,"g":-5.91,"s110":961,"s115":699,"sDiff":-262,"sG":-27.26,"g0_5":-47,"g6_11":-19.2,"oldPct":23.7,"sShare":3.6,"medInc":554,"avgInc":783},{"code":"09020040","name":"金門縣金寧鄉","county":"金門縣","town":"金寧鄉","t110":33901,"t114":35287,"t115":35137,"diff":1236,"g":3.65,"s110":1833,"s115":1876,"sDiff":43,"sG":2.35,"g0_5":-33.3,"g6_11":17.6,"oldPct":16.4,"sShare":5.3,"medInc":538,"avgInc":776},{"code":"09020050","name":"金門縣烈嶼鄉","county":"金門縣","town":"烈嶼鄉","t110":12743,"t114":12050,"t115":11801,"diff":-942,"g":-7.39,"s110":493,"s115":360,"sDiff":-133,"sG":-26.98,"g0_5":-53.7,"g6_11":-24.9,"oldPct":23.8,"sShare":3.1,"medInc":528,"avgInc":756},{"code":"09020060","name":"金門縣烏坵鄉","county":"金門縣","town":"烏坵鄉","t110":672,"t114":593,"t115":596,"diff":-76,"g":-11.31,"s110":52,"s115":35,"sDiff":-17,"sG":-32.69,"g0_5":-59.3,"g6_11":-40,"oldPct":15.1,"sShare":5.9,"medInc":526,"avgInc":820},{"code":"09007010","name":"連江縣南竿鄉","county":"連江縣","town":"南竿鄉","t110":7657,"t114":7629,"t115":7641,"diff":-16,"g":-0.21,"s110":630,"s115":552,"sDiff":-78,"sG":-12.38,"g0_5":-28.7,"g6_11":-9.2,"oldPct":18,"sShare":7.2,"medInc":685,"avgInc":879},{"code":"09007020","name":"連江縣北竿鄉","county":"連江縣","town":"北竿鄉","t110":2998,"t114":2930,"t115":2899,"diff":-99,"g":-3.3,"s110":149,"s115":141,"sDiff":-8,"sG":-5.37,"g0_5":-37.2,"g6_11":8.6,"oldPct":18.8,"sShare":4.9,"medInc":603,"avgInc":747},{"code":"09007030","name":"連江縣莒光鄉","county":"連江縣","town":"莒光鄉","t110":1496,"t114":1537,"t115":1589,"diff":93,"g":6.22,"s110":51,"s115":44,"sDiff":-7,"sG":-13.73,"g0_5":-60.7,"g6_11":7.7,"oldPct":19.8,"sShare":2.8,"medInc":629,"avgInc":790},{"code":"09007040","name":"連江縣東引鄉","county":"連江縣","town":"東引鄉","t110":1494,"t114":1525,"t115":1531,"diff":37,"g":2.48,"s110":112,"s115":99,"sDiff":-13,"sG":-11.61,"g0_5":-37.5,"g6_11":4.8,"oldPct":12.5,"sShare":6.5,"medInc":657,"avgInc":785}];
+
+const fmtNum = n => n == null ? '—' : n.toLocaleString();
+const fmtSign = n => n > 0 ? '+' + n.toLocaleString() : n.toLocaleString();
+const fmtPct = n => n == null ? '—' : (n > 0 ? '+' + n.toFixed(2) + '%' : n.toFixed(2) + '%');
+const clsOf = n => n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
+
+function renderCountyRows(arr, startIdx, tbodyId) {
+  const tb = document.getElementById(tbodyId);
+  arr.forEach((c, idx) => {
+    const i = startIdx + idx;
+    const gNum = Number((c.g110_115_num * 100).toFixed(2));
+    const sNum = Number((c.sGrowth_num * 100).toFixed(2));
+    tb.innerHTML += `
+      <tr>
+        <td><strong>${i+1}</strong></td>
+        <td><strong>${c.name}</strong></td>
+        <td>${fmtNum(c.t110)}</td>
+        <td>${fmtNum(c.t114)}</td>
+        <td><strong>${fmtNum(c.t115)}</strong></td>
+        <td class="${clsOf(c.diff110_115)}"><strong>${fmtSign(c.diff110_115)}</strong></td>
+        <td><span class="badge ${gNum >= 0 ? 'badge-pos' : 'badge-neg'}">${fmtPct(gNum)}</span></td>
+        <td class="${clsOf(sNum)}"><strong>${fmtPct(sNum)}</strong></td>
+        <td class="neg">${c.c0_5_growth}</td>
+        <td class="${c.c6_11_growth.startsWith('-') ? 'neg' : 'pos'}">${c.c6_11_growth}</td>
+        <td class="${parseFloat(c.oldPct115) >= 22 ? 'warn' : ''}"><strong>${c.oldPct115}</strong></td>
+      </tr>
+    `;
+  });
+}
+renderCountyRows(COUNTY_DATA.slice(0, 11), 0, 'county-tbody-1');
+renderCountyRows(COUNTY_DATA.slice(11, 22), 11, 'county-tbody-2');
+
+const topRateTbody = document.getElementById('top-rate-tbody');
+TOP_RATE.forEach((r, i) => {
+  topRateTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t110)}</td>
+      <td><strong>${fmtNum(r.t115)}</strong></td>
+      <td class="pos"><strong>${fmtSign(r.diff)}</strong></td>
+      <td><span class="badge badge-pos">${fmtPct(r.g)}</span></td>
+      <td class="${clsOf(r.sG)}"><strong>${fmtPct(r.sG)}</strong></td>
+      <td class="${clsOf(r.g6_11)}"><strong>${r.g6_11 > 0 ? '+' : ''}${r.g6_11}%</strong></td>
+      <td class="${r.medInc >= 600 ? 'warn' : ''}"><strong>${r.medInc ? r.medInc + ' 千元' : '—'}</strong></td>
+    </tr>
+  `;
+});
+
+const topAbsTbody = document.getElementById('top-abs-tbody');
+TOP_ABS.forEach((r, i) => {
+  topAbsTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t110)}</td>
+      <td><strong>${fmtNum(r.t115)}</strong></td>
+      <td class="pos"><strong>${fmtSign(r.diff)} 人</strong></td>
+      <td><span class="badge badge-pos">${fmtPct(r.g)}</span></td>
+      <td>${fmtNum(r.s115)} 人</td>
+      <td class="${r.medInc >= 600 ? 'warn' : ''}"><strong>${r.medInc ? r.medInc + ' 千元' : '—'}</strong></td>
+    </tr>
+  `;
+});
+
+const schoolGrowTbody = document.getElementById('school-grow-tbody');
+SCHOOL_DOUBLE.forEach((r, i) => {
+  schoolGrowTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.s110)}</td>
+      <td><strong>${fmtNum(r.s115)}</strong></td>
+      <td class="pos"><strong>+${fmtNum(r.sDiff)} 人</strong></td>
+      <td><span class="badge badge-pos">+${r.sG.toFixed(2)}%</span></td>
+      <td class="${clsOf(r.g6_11)}"><strong>${r.g6_11 > 0 ? '+' : ''}${r.g6_11}%</strong></td>
+      <td class="pos"><strong>+${r.g.toFixed(2)}%</strong></td>
+      <td class="${r.medInc >= 600 ? 'warn' : ''}"><strong>${r.medInc ? r.medInc + ' 千元' : '—'}</strong></td>
+    </tr>
+  `;
+});
+
+const youngestTbody = document.getElementById('youngest-tbody');
+YOUNGEST.forEach((r, i) => {
+  youngestTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t115)}</td>
+      <td><strong>${fmtNum(r.s115)}</strong></td>
+      <td><span class="badge badge-info">${r.sShare}%</span></td>
+      <td>${r.oldPct}%</td>
+      <td class="${r.medInc >= 600 ? 'warn' : ''}"><strong>${r.medInc ? r.medInc + ' 千元' : '—'}</strong></td>
+      <td>${r.avgInc ? r.avgInc + ' 千元' : '—'}</td>
+    </tr>
+  `;
+});
+
+const bottomAbsTbody = document.getElementById('bottom-abs-tbody');
+BOTTOM_ABS.forEach((r, i) => {
+  bottomAbsTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t115)}</td>
+      <td class="neg"><strong>${fmtSign(r.diff)}</strong></td>
+      <td class="neg">${fmtPct(r.sG)}</td>
+      <td class="${r.oldPct >= 25 ? 'warn' : ''}"><strong>${r.oldPct}%</strong></td>
+    </tr>
+  `;
+});
+
+const bottomRateTbody = document.getElementById('bottom-rate-tbody');
+BOTTOM_RATE.forEach((r, i) => {
+  bottomRateTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t115)}</td>
+      <td><span class="badge badge-neg">${fmtPct(r.g)}</span></td>
+      <td class="neg">${fmtPct(r.sG)}</td>
+      <td class="${r.oldPct >= 28 ? 'warn' : ''}"><strong>${r.oldPct}%</strong></td>
+    </tr>
+  `;
+});
+
+const villTotalTbody = document.getElementById('vill-total-tbody');
+VILL_TOTAL.forEach((v, i) => {
+  villTotalTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${v.name}</strong></td>
+      <td>${fmtNum(v.base)} → <strong>${fmtNum(v.last)}</strong></td>
+      <td><span class="badge badge-pos">+${(v.growth*100).toFixed(1)}%</span></td>
+      <td class="pos"><strong>+${(v.sGrowth*100).toFixed(1)}%</strong></td>
+    </tr>
+  `;
+});
+
+const villSchoolTbody = document.getElementById('vill-school-tbody');
+VILL_SCHOOL.forEach((v, i) => {
+  villSchoolTbody.innerHTML += `
+    <tr>
+      <td><strong>${i+1}</strong></td>
+      <td><strong>${v.name}</strong></td>
+      <td>${fmtNum(v.sBase)} → <strong>${fmtNum(v.sLast)}</strong></td>
+      <td class="pos"><strong>+${fmtNum(v.sDiff)} 人</strong></td>
+      <td><span class="badge badge-pos">+${(v.sGrowth*100).toFixed(1)}%</span></td>
+    </tr>
+  `;
+});
+
+const countySelect = document.getElementById('filter-county');
+const countiesList = [...new Set(ALL_TOWNS.map(x => x.county))];
+countiesList.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = c;
+  opt.textContent = c;
+  countySelect.appendChild(opt);
+});
+
+let sortKey = 'g';
+let sortDir = -1;
+
+function renderExplorer() {
+  const cVal = countySelect.value;
+  const qVal = document.getElementById('filter-search').value.trim();
+  const pVal = document.getElementById('filter-preset').value;
+
+  let rows = ALL_TOWNS.filter(r => {
+    if (cVal && r.county !== cVal) return false;
+    if (qVal && !r.name.includes(qVal)) return false;
+    if (pVal === 'double' && !(r.diff > 0 && r.sDiff > 0)) return false;
+    if (pVal === 'grow' && !(r.diff > 0)) return false;
+    if (pVal === 'highInc' && !(r.medInc >= 550)) return false;
+    if (pVal === 'superAged' && !(r.oldPct >= 25)) return false;
+    return true;
+  });
+
+  rows.sort((a, b) => {
+    const va = a[sortKey] ?? -999999;
+    const vb = b[sortKey] ?? -999999;
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va - vb) * sortDir;
+  });
+
+  document.getElementById('filter-count').textContent = `共 ${rows.length} 筆`;
+  const tbody = document.getElementById('explorer-tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtNum(r.t110)}</td>
+      <td><strong>${fmtNum(r.t115)}</strong></td>
+      <td class="${clsOf(r.diff)}"><strong>${fmtSign(r.diff)}</strong></td>
+      <td><span class="badge ${r.g >= 0 ? 'badge-pos' : 'badge-neg'}">${fmtPct(r.g)}</span></td>
+      <td>${fmtNum(r.s115)}</td>
+      <td class="${clsOf(r.sDiff)}">${fmtSign(r.sDiff)}</td>
+      <td class="${clsOf(r.sG)}"><strong>${fmtPct(r.sG)}</strong></td>
+      <td class="${clsOf(r.g0_5)}">${r.g0_5 > 0 ? '+' : ''}${r.g0_5}%</td>
+      <td class="${clsOf(r.g6_11)}">${r.g6_11 > 0 ? '+' : ''}${r.g6_11}%</td>
+      <td class="${r.oldPct >= 25 ? 'warn' : ''}">${r.oldPct}%</td>
+      <td class="${r.medInc >= 600 ? 'warn' : ''}"><strong>${r.medInc ?? '—'}</strong></td>
+    </tr>
+  `).join('');
+}
+
+countySelect.addEventListener('change', renderExplorer);
+document.getElementById('filter-search').addEventListener('input', renderExplorer);
+document.getElementById('filter-preset').addEventListener('change', renderExplorer);
+
+document.querySelectorAll('#explorer-table th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortDir *= -1;
+    else { sortKey = k; sortDir = -1; }
+    renderExplorer();
+  });
+});
+
+renderExplorer();
+
+const slides = document.querySelectorAll('.slide');
+const dotsContainer = document.getElementById('nav-dots');
+let currentSlide = 0;
+
+slides.forEach((_, idx) => {
+  const dot = document.createElement('button');
+  dot.className = 'nav-dot' + (idx === 0 ? ' active' : '');
+  dot.textContent = idx + 1;
+  dot.onclick = () => goToSlide(idx);
+  dotsContainer.appendChild(dot);
+});
+
+function goToSlide(idx) {
+  if (idx < 0 || idx >= slides.length) return;
+  slides[currentSlide].classList.remove('active');
+  dotsContainer.children[currentSlide].classList.remove('active');
+  currentSlide = idx;
+  slides[currentSlide].classList.add('active');
+  dotsContainer.children[currentSlide].classList.add('active');
+  document.getElementById('slide-indicator').textContent = `Slide ${currentSlide + 1} / ${slides.length}`;
+}
+
+function nextSlide() { goToSlide(currentSlide + 1); }
+function prevSlide() { goToSlide(currentSlide - 1); }
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+});
+</script>
+</body>
+</html>

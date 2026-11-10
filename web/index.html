@@ -7,36 +7,63 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=44">
 </head>
 <body>
 <div id="app">
   <div id="map"></div>
 
-  <header class="card" id="titlebar">
-    <h1>展店地圖</h1>
-    <p>全台 368 鄉鎮市區・小學幼兒園＋補教據點分布<span id="period"></span></p>
+  <!-- 頂部全域導航列 -->
+  <header class="card" id="navbar">
+    <div class="nav-brand">
+      <span class="nav-title">展店地圖</span>
+      <span class="nav-period" id="period"></span>
+    </div>
+    <div class="chips nav-role" id="roleSwitch">
+      <button data-role="ops" class="active">營運</button>
+      <button data-role="exec">高階主管</button>
+    </div>
+    <div class="nav-search">
+      <input type="text" id="globalSearch" placeholder="搜尋行政區 / 學校 / 品牌據點…" autocomplete="off" spellcheck="false">
+      <div id="searchResults" hidden></div>
+    </div>
+    <div class="nav-controls" id="navControls">
+      <div class="nav-group">
+        <span class="nav-lab">主題</span>
+        <div class="chips" id="theme">
+          <button data-t="pop" class="active">人口年齡</button>
+          <button data-t="income">綜稅所得</button>
+        </div>
+      </div>
+      <section class="nav-group nav-age" id="ageSection">
+        <span class="nav-lab">年齡</span>
+        <div id="bands" class="chips"></div>
+        <div class="range-row">
+          <input type="number" id="ageMin" min="0" max="100" value="0">
+          <span>—</span>
+          <input type="number" id="ageMax" min="0" max="100" value="100">
+          <span class="hint">歲</span>
+        </div>
+      </section>
+      <div class="nav-group">
+        <span class="nav-lab">呈現</span>
+        <div class="chips" id="metric">
+          <button data-m="count" class="active">人口數</button>
+          <button data-m="share">占總人口比例</button>
+        </div>
+        <div class="chips" id="metricIncome" hidden>
+          <button data-m="med" class="active">中位數</button>
+          <button data-m="avg">平均數</button>
+        </div>
+      </div>
+    </div>
   </header>
 
+  <!-- 側邊欄收合鈕 -->
+  <button id="sidebarToggle" title="收合／展開側邊欄（[ 鍵）">◀</button>
+
+  <!-- 左側可收折側邊欄 -->
   <aside class="card" id="controls">
-    <section>
-      <h2>資料主題</h2>
-      <div class="chips" id="theme">
-        <button data-t="pop" class="active">人口年齡</button>
-        <button data-t="income">綜稅所得</button>
-      </div>
-    </section>
-    <section id="ageSection">
-      <h2>年齡層</h2>
-      <div id="bands" class="chips"></div>
-      <div class="range-row">
-        <label>自訂</label>
-        <input type="number" id="ageMin" min="0" max="100" value="0">
-        <span>—</span>
-        <input type="number" id="ageMax" min="0" max="100" value="100">
-        <span class="hint">歲</span>
-      </div>
-    </section>
     <section>
       <h2>縣市篩選</h2>
       <div class="row">
@@ -76,31 +103,46 @@
       <p class="hint" id="villLoading" hidden>村里資料載入中…</p>
     </section>
     <section>
-      <h2>呈現方式</h2>
-      <div class="chips" id="metric">
-        <button data-m="count" class="active">人口數</button>
-        <button data-m="share">占總人口比例</button>
+      <h2>空白市場探測</h2>
+      <div class="ws-row"><label>學齡人口 ≥</label><input type="number" id="wsAge" value="3000" min="0" step="500"></div>
+      <div class="ws-row"><label>所得中位 ≥</label><input type="number" id="wsInc" value="0" min="0" step="10"><span class="hint">萬</span></div>
+      <div class="ws-row"><label>此半徑內無</label>
+        <select id="wsBrand">
+          <option value="台灣拓人">台灣拓人</option>
+          <option value="KUMON">KUMON</option>
+          <option value="明光義塾">明光義塾</option>
+          <option value="MPM 數學">MPM 數學</option>
+          <option value="any">任一品牌</option>
+        </select>
       </div>
-      <div class="chips" id="metricIncome" hidden>
-        <button data-m="med" class="active">中位數</button>
-        <button data-m="avg">平均數</button>
-      </div>
+      <div class="ws-row"><label>半徑</label><input type="number" id="wsRadius" value="1.5" min="0.2" step="0.5"><span class="hint">km</span></div>
+      <div class="row"><button id="wsRun">探測</button><button id="wsClear">清除</button></div>
+      <div id="wsResults"></div>
     </section>
   </aside>
 
   <aside class="card" id="detail" hidden>
     <h2 id="dName"></h2>
-    <div class="stats">
-      <div><span class="num" id="dTotal"></span><span class="lab" id="dTotalLab">總人口</span></div>
-      <div><span class="num" id="dBand"></span><span class="lab" id="dBandLab">選取年齡層</span></div>
-      <div><span class="num" id="dShare"></span><span class="lab" id="dShareLab">占比</span></div>
+    <div class="tabs" id="detailTabs">
+      <button data-tab="pop" class="active">人口所得</button>
+      <button data-tab="school">學校學區</button>
+      <button data-tab="comp">補教競品</button>
     </div>
-    <svg id="hist" width="280" height="90"></svg>
-    <p class="hint">年齡 0 — 100+ 歲人口分布</p>
-    <div class="stats schools-row">
-      <div><span class="num" id="dElem"></span><span class="lab">國小</span></div>
-      <div><span class="num" id="dKinder"></span><span class="lab">幼兒園</span></div>
+    <div class="tab-pane" id="tabPop">
+      <div class="stats">
+        <div><span class="num" id="dTotal"></span><span class="lab" id="dTotalLab">總人口</span></div>
+        <div><span class="num" id="dBand"></span><span class="lab" id="dBandLab">選取年齡層</span></div>
+        <div><span class="num" id="dShare"></span><span class="lab" id="dShareLab">占比</span></div>
+      </div>
+      <svg id="hist" width="280" height="90"></svg>
+      <p class="hint">年齡 0 — 100+ 歲人口分布</p>
+      <div class="stats schools-row">
+        <div><span class="num" id="dElem"></span><span class="lab">國小</span></div>
+        <div><span class="num" id="dKinder"></span><span class="lab">幼兒園</span></div>
+      </div>
     </div>
+    <div class="tab-pane" id="tabSchool" hidden></div>
+    <div class="tab-pane" id="tabComp" hidden></div>
   </aside>
 
   <div class="card" id="legend">
@@ -117,12 +159,60 @@
     座標輔助：© OpenStreetMap
   </footer>
 
+  <!-- 現勘工具浮動按鈕 -->
+  <button id="fabSurvey" class="fab" title="在地圖上點一下放置勘查點（也可右鍵直接放）">📍 新增勘查點</button>
+
+  <!-- 現勘生活圈分析面板 -->
+  <aside class="card" id="survey" hidden>
+    <div class="survey-head">
+      <input type="text" id="surveyName" placeholder="勘查點名稱" spellcheck="false">
+      <button id="surveyClose" title="關閉並移除勘查點">✕</button>
+    </div>
+    <div class="chips" id="surveyRadius">
+      <button data-r="500">500m</button>
+      <button data-r="1000" class="active">1km</button>
+      <button data-r="2000">2km</button>
+    </div>
+    <div id="surveyBody"></div>
+    <div class="survey-actions">
+      <button id="surveyExcel">📊 匯出 Excel</button>
+      <button id="surveyShot">📷 地圖截圖</button>
+    </div>
+    <p class="hint" id="surveyStatus" hidden></p>
+  </aside>
+
+  <!-- 高階主管儀表板 -->
+  <aside class="card" id="execPanel" hidden>
+    <div class="exec-head">
+      <span class="exec-title">經營概況</span>
+      <select id="execBrand" title="選擇自家品牌"></select>
+    </div>
+    <div class="exec-drill">
+      <select id="execCounty"><option value="">選縣市…</option></select>
+      <select id="execTown"><option value="">選鄉鎮市區…</option></select>
+    </div>
+    <div id="execBody"></div>
+  </aside>
+  <div class="card" id="execLegend" hidden>
+    <span><i class="ex-dot g"></i>拓荒潛力</span>
+    <span><i class="ex-dot c"></i>飽和警戒</span>
+    <span><i class="ex-dot n"></i>其他</span>
+  </div>
+
+  <!-- 高階主管：點選鄉鎮的現況卡片 -->
+  <aside class="card" id="execDetail" hidden>
+    <button id="execDetailClose" title="關閉">✕</button>
+    <div id="execDetailBody"></div>
+  </aside>
+
   <div id="tooltip" hidden></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script src="app.js?v=30"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>

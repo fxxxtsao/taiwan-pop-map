@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>近五年人口成長分析 — 展店地圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #09090b; --bg2: #18181b; --line: rgba(255,255,255,0.10);
+  --ink: #f4f4f5; --soft: #a1a1aa; --dim: #71717a;
+  --amber: #f59e0b; --amber-l: #fbbf24;
+  --up: #10b981; --dn: #ef4444;
+}
+body {
+  font-family: 'Outfit', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg); color: var(--ink); overflow: hidden; height: 100vh; width: 100vw;
+}
+.deck { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+.slide {
+  position: absolute; inset: 0; opacity: 0; visibility: hidden; transform: scale(0.98);
+  transition: opacity .35s ease, transform .35s ease;
+  display: flex; flex-direction: column; padding: 2.2rem 2.8rem 4.6rem;
+  background: radial-gradient(circle at 50% 18%, #17171a 0%, #09090b 70%);
+}
+.slide.active { opacity: 1; visibility: visible; transform: scale(1); z-index: 10; }
+
+.s-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem;
+  border-bottom: 1px solid var(--line); padding-bottom: .9rem; margin-bottom: 1.2rem; }
+.s-tag { background: linear-gradient(135deg, var(--amber), #d97706); color: #000;
+  font-weight: 800; padding: .3rem .9rem; border-radius: 999px; font-size: .78rem; letter-spacing: .04em; }
+.s-title { font-size: 1.7rem; font-weight: 800; line-height: 1.25; display: flex; align-items: center; gap: .9rem; }
+.s-sub { font-size: .9rem; color: var(--soft); margin-top: .3rem; }
+.s-body { flex: 1; display: grid; grid-template-columns: 1.25fr 1fr; gap: 1.6rem; min-height: 0; }
+.s-body.one { grid-template-columns: 1fr; }
+
+/* 地圖 */
+.map-box { position: relative; border-radius: 1.1rem; overflow: hidden;
+  border: 1px solid #27272a; background: #0b0d10; min-height: 0; }
+#mapWrap { position: absolute; inset: 0; }
+#map { width: 100%; height: 100%; }
+.map-cap { position: absolute; left: .9rem; bottom: .9rem; z-index: 5;
+  background: rgba(12,12,14,.86); backdrop-filter: blur(8px);
+  border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .85rem; font-size: .76rem; color: var(--soft); }
+.ramp { display: flex; align-items: center; gap: .5rem; margin-top: .35rem; }
+.ramp i { width: 86px; height: 8px; border-radius: 2px; display: block;
+  background: linear-gradient(90deg,#b91c1c,#7f3b3b,#3f3f46,#2f7d5f,#10b981); }
+.ramp span { font-size: .7rem; color: var(--dim); letter-spacing: .5px; }
+
+/* 右欄 */
+.panel { display: flex; flex-direction: column; gap: .9rem; min-height: 0; overflow-y: auto; }
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
+.kpi { background: rgba(39,39,42,.55); border: 1px solid var(--line); border-radius: .9rem; padding: .9rem 1rem; }
+.kpi .v { font-size: 1.7rem; font-weight: 800; line-height: 1.05; margin-top: .15rem; }
+.kpi .k { font-size: .76rem; color: var(--soft); font-weight: 600; }
+.kpi .s { font-size: .7rem; color: var(--dim); margin-top: .2rem; }
+.up { color: var(--up); } .dn { color: var(--dn); } .am { color: var(--amber-l); }
+
+.segs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: .6rem; overflow: hidden; }
+.seg button { font: inherit; font-size: .76rem; color: var(--soft); background: rgba(39,39,42,.5);
+  border: none; padding: .35rem .8rem; cursor: pointer; white-space: nowrap; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--amber); color: #000; font-weight: 700; }
+
+.rank { list-style: none; overflow-y: auto; min-height: 11rem; flex: 1 1 auto;
+  border: 1px solid var(--line); border-radius: .9rem; background: rgba(24,24,27,.55); }
+.rank li { display: flex; align-items: center; gap: .7rem; padding: .5rem .8rem;
+  border-bottom: 1px solid rgba(255,255,255,.05); cursor: pointer; font-size: .86rem; }
+.rank li:last-child { border-bottom: none; }
+.rank li:hover { background: rgba(245,158,11,.10); }
+.rank li.on { background: rgba(245,158,11,.18); }
+.rank .n { width: 1.4rem; font-weight: 800; color: var(--amber-l); font-variant-numeric: tabular-nums; }
+.rank .nm { flex: 1; min-width: 0; }
+.rank .pc { font-weight: 800; font-variant-numeric: tabular-nums; }
+.rank .ex { font-size: .72rem; color: var(--dim); font-variant-numeric: tabular-nums; width: 8.6rem; text-align: right; }
+.empty { padding: 1rem; color: var(--dim); font-size: .85rem; }
+
+.card { border: 1px solid var(--line); border-radius: .9rem; background: rgba(24,24,27,.75); padding: .9rem 1rem; }
+.card h4 { font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: .6rem; }
+.card .tiny { font-size: .74rem; color: var(--dim); margin-top: .15rem; }
+.mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: .7rem; }
+.mini > div { background: rgba(39,39,42,.5); border-radius: .6rem; padding: .5rem .6rem; }
+.mini .v { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mini .k { font-size: .68rem; color: var(--soft); }
+.trend { display: flex; align-items: center; gap: .6rem; margin-top: .7rem; font-size: .8rem; }
+.trend .lab { color: var(--soft); width: 4.4rem; }
+.trend .pc { font-weight: 800; width: 3.4rem; font-variant-numeric: tabular-nums; }
+.trend .nu { color: var(--dim); font-size: .74rem; font-variant-numeric: tabular-nums; }
+.trend svg { margin-left: auto; }
+.note { background: rgba(245,158,11,.10); border-left: 3px solid var(--amber);
+  border-radius: .6rem; padding: .7rem .9rem; font-size: .84rem; line-height: 1.6; color: #e8e8ea; }
+.note b { color: var(--amber-l); }
+
+/* 封面 / 說明頁 */
+.cover { justify-content: center; align-items: center; text-align: center; padding: 4rem; }
+.cover h1 { font-size: 3.1rem; font-weight: 900; line-height: 1.2; margin-bottom: 1rem;
+  background: linear-gradient(135deg,#fff 0%, #a1a1aa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.badge { display: inline-block; background: rgba(245,158,11,.18); color: var(--amber-l);
+  border: 1px solid rgba(245,158,11,.4); padding: .45rem 1.3rem; border-radius: 999px;
+  font-size: .95rem; font-weight: 700; margin-bottom: 1.6rem; }
+.cover p { color: var(--soft); font-size: 1rem; max-width: 50rem; line-height: 1.8; }
+.cover .kpis { margin-top: 2.2rem; width: min(60rem, 100%); grid-template-columns: repeat(4, 1fr); }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; align-content: start; }
+.col { border: 1px solid var(--line); border-radius: 1rem; background: rgba(24,24,27,.6); padding: 1.2rem 1.3rem; }
+.col h3 { font-size: 1.05rem; font-weight: 800; color: var(--amber-l); margin-bottom: .6rem; }
+.col p, .col li { font-size: .88rem; color: #d4d4d8; line-height: 1.75; }
+.col ul { padding-left: 1.1rem; margin-top: .4rem; }
+.col .em { color: #fff; font-weight: 700; }
+.steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.1rem; align-content: start; }
+.step { border: 1px solid var(--line); border-radius: 1rem; background: rgba(24,24,27,.6); padding: 1.2rem 1.4rem; }
+.step .no { font-size: .75rem; font-weight: 800; color: #000; background: var(--amber);
+  border-radius: 999px; padding: .15rem .7rem; display: inline-block; margin-bottom: .6rem; }
+.step h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: .45rem; }
+.step p { font-size: .87rem; color: #d4d4d8; line-height: 1.7; }
+
+/* 導覽列 */
+.nav { position: absolute; bottom: 1.1rem; right: 2.2rem; z-index: 50; display: flex; align-items: center; gap: .7rem;
+  background: rgba(24,24,27,.9); backdrop-filter: blur(12px); padding: .45rem .9rem;
+  border-radius: 999px; border: 1px solid var(--line); }
+.nav button { background: #27272a; border: none; color: #fff; padding: .4rem 1rem;
+  border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer; }
+.nav button:hover { background: #3f3f46; }
+.nav button:disabled { opacity: .35; cursor: not-allowed; }
+.dots { display: flex; gap: .3rem; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: #3f3f46; cursor: pointer; display: block; }
+.dots i.on { background: var(--amber); }
+.home { position: absolute; bottom: 1.1rem; left: 2.2rem; z-index: 50; font-size: .8rem;
+  color: var(--soft); text-decoration: none; border: 1px solid var(--line);
+  background: rgba(24,24,27,.9); padding: .45rem 1rem; border-radius: 999px; }
+.home:hover { color: #fff; }
+
+/* Top10 編號大頭針 */
+.pin { width: 26px; height: 26px; border-radius: 50%; background: var(--amber); color: #000;
+  font-weight: 800; font-size: .78rem; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #09090b; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+.pin.sel { background: #fff; transform: scale(1.18); }
+#boot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--soft); font-size: .95rem; z-index: 200; background: var(--bg); }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 1 封面 -->
+  <section class="slide cover">
+    <div class="badge" id="coverPeriod">載入中…</div>
+    <h1>近五年人口成長分析</h1>
+    <p>全台 368 個鄉鎮市區、7,700 餘個村里的人口與學齡結構變化。<br>
+       在全國人口總量下滑的背景下，找出仍在長大的地方——以及那些「人變多、小孩卻變少」的假成長區。</p>
+    <div class="kpis" id="coverKpis"></div>
+  </section>
+
+  <!-- 2 方法 -->
+  <section class="slide">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">方法</span>這份分析怎麼算出來的</div>
+        <div class="s-sub">資料、期間、門檻，三件事先說清楚，數字才站得住</div></div>
+    </div>
+    <div class="s-body one"><div class="cols" id="methodCols"></div></div>
+  </section>
+
+  <!-- 3 全台態勢 -->
+  <section class="slide" data-map="1">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">總覽</span>全台態勢：總量在縮，但不是每個地方都在縮</div>
+        <div class="s-sub" id="s3sub"></div></div>
+      <div class="segs"><div class="seg" data-seg="metric">
+        <button data-v="total" class="on">總人口</button><button data-v="school">學齡 3–12</button></div></div>
+    </div>
+    <div class="s-body">
+      <div class="map-box" data-mapslot="1"><div class="map-cap">
+        <div>鄉鎮市區成長率著色</div>
+        <div class="ramp"><span>−10%</span><i></i><span>+10%</span></div></div></div>
+      <div class="panel" id="s3panel"></div>
+    </div>
+  </section>
+
+  <!-- 4 鄉鎮榜 -->
+  <section class="slide" data-map="1">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">鄉鎮</span>成長最快的鄉鎮市區</div>
+        <div class="s-sub">點清單或地圖上的編號，下方卡片會換成該區明細</div></div>
+      <div class="segs"><div class="seg" data-seg="metric">
+        <button data-v="total" class="on">總人口</button><button data-v="school">學齡 3–12</button></div></div>
+    </div>
+    <div class="s-body">
+      <div class="map-box" data-mapslot="1"></div>
+      <div class="panel">
+        <ol class="rank" id="s4list"></ol>
+        <div class="card" id="s4card"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 陷阱 -->
+  <section class="slide" data-map="1">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">警訊</span>假成長區：人變多，小孩變少</div>
+        <div class="s-sub">總人口成長、學齡人口卻衰退的鄉鎮。總人口榜看起來漂亮，對補教卻是陷阱</div></div>
+    </div>
+    <div class="s-body">
+      <div class="map-box" data-mapslot="1"></div>
+      <div class="panel">
+        <div class="note" id="s5note"></div>
+        <ol class="rank" id="s5list"></ol>
+        <div class="card" id="s5card"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 村里 -->
+  <section class="slide" data-map="1">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">村里</span>重劃區級的熱點</div>
+        <div class="s-sub">把尺度縮到村里，成長幅度是另一個量級。點清單會載入村里界並縮放過去</div></div>
+      <div class="segs"><div class="seg" data-seg="metric">
+        <button data-v="total" class="on">總人口</button><button data-v="school">學齡 3–12</button></div></div>
+    </div>
+    <div class="s-body">
+      <div class="map-box" data-mapslot="1"></div>
+      <div class="panel">
+        <ol class="rank" id="s6list"></ol>
+        <div class="card" id="s6card"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 結論 -->
+  <section class="slide">
+    <div class="s-head">
+      <div><div class="s-title"><span class="s-tag">結論</span>這份數字可以怎麼用</div>
+        <div class="s-sub">四個直接可執行的方向</div></div>
+    </div>
+    <div class="s-body one"><div class="steps" id="actions"></div></div>
+  </section>
+
+  <div id="mapWrap"><div id="map"></div></div>
+
+  <a class="home" href="index.html">← 回展店地圖</a>
+  <div class="nav">
+    <button id="prev">← 上一頁</button>
+    <div class="dots" id="dots"></div>
+    <button id="next">下一頁 →</button>
+  </div>
+  <div id="boot">載入資料中…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="growth.js?v=3"></script>
+</body>
+</html>
